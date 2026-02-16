@@ -922,6 +922,7 @@ async function callClaude(systemPrompt, userMessage) {
     body: JSON.stringify({
       model: state.claudeModel,
       max_tokens: 8192,
+      stream: true,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }]
     })
@@ -930,10 +931,35 @@ async function callClaude(systemPrompt, userMessage) {
     const body = await resp.text();
     throw new Error(`Claude ${resp.status}: ${body}`);
   }
-  const data = await resp.json();
-  const text = data.content[0].text;
-  const usage = data.usage;
-  logConsole(`Claude responded: ${text.length} chars, ${usage.input_tokens} in / ${usage.output_tokens} out tokens`, 'ok');
+  // Read SSE stream
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let text = '';
+  let inputTokens = 0, outputTokens = 0;
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6);
+      if (data === '[DONE]') continue;
+      try {
+        const evt = JSON.parse(data);
+        if (evt.type === 'content_block_delta' && evt.delta?.text) {
+          text += evt.delta.text;
+        } else if (evt.type === 'message_delta' && evt.usage) {
+          outputTokens = evt.usage.output_tokens;
+        } else if (evt.type === 'message_start' && evt.message?.usage) {
+          inputTokens = evt.message.usage.input_tokens;
+        }
+      } catch (e) { /* skip non-JSON lines */ }
+    }
+  }
+  logConsole(`Claude responded: ${text.length} chars, ${inputTokens} in / ${outputTokens} out tokens`, 'ok');
   return text;
 }
 
