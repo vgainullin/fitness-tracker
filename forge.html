@@ -869,7 +869,7 @@ function inspectState() {
 async function ghAPI(path, options = {}) {
   const resp = await fetch('https://api.github.com' + path, {
     headers: {
-      'Authorization': 'token ' + state.ghToken,
+      'Authorization': (state.ghToken.startsWith('github_pat_') ? 'Bearer ' : 'token ') + state.ghToken,
       'Accept': 'application/vnd.github.v3+json',
       ...(options.headers || {})
     },
