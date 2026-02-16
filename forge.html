@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1117">
+<title>Forge</title>
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiRm9yZ2UiLCJzaG9ydF9uYW1lIjoiRm9yZ2UiLCJzdGFydF91cmwiOiJmb3JnZS5odG1sIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzBkMTExNyIsInRoZW1lX2NvbG9yIjoiIzBkMTExNyJ9">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-input: #0d1117;
+  --border: #30363d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #484f58;
+  --accent: #58a6ff;
+  --accent-dim: #1f6feb;
+  --green: #3fb950;
+  --green-dim: #238636;
+  --red: #f85149;
+  --red-dim: #da3633;
+  --yellow: #d29922;
+  --orange: #db6d28;
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --radius: 6px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Layout */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  height: 100dvh;
+}
+
+/* Tab Bar */
+.tab-bar {
+  display: flex;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tab-bar button {
+  flex: 1;
+  padding: 12px 8px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab-bar button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.tab-bar button:hover { color: var(--text-primary); }
+
+/* Tab Content */
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  display: none;
+  flex-direction: column;
+}
+.tab-content.active {
+  display: flex;
+}
+
+/* Chat Tab */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.msg {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.msg.user {
+  align-self: flex-end;
+  background: var(--accent-dim);
+  color: #fff;
+  border-bottom-right-radius: 2px;
+}
+.msg.system {
+  align-self: flex-start;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 2px;
+  max-width: 92%;
+}
+.msg.error {
+  align-self: flex-start;
+  background: rgba(248, 81, 73, 0.1);
+  border: 1px solid var(--red-dim);
+  color: var(--red);
+  max-width: 92%;
+}
+
+.msg pre {
+  background: var(--bg-primary);
+  padding: 8px 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  margin: 6px 0;
+  border: 1px solid var(--border);
+}
+.msg code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--bg-tertiary);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.msg pre code {
+  background: none;
+  padding: 0;
+}
+
+/* Diff stats display */
+.diff-stats {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin: 8px 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.diff-stats .added { color: var(--green); }
+.diff-stats .removed { color: var(--red); }
+.diff-stats .changed { color: var(--yellow); }
+
+/* Approval buttons */
+.approval-bar {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.approval-bar button {
+  flex: 1;
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.approval-bar button:hover { opacity: 0.85; }
+.btn-approve {
+  background: var(--green-dim);
+  color: #fff;
+}
+.btn-reject {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border) !important;
+}
+
+/* Chat Input */
+.chat-input-area {
+  padding: 12px 16px;
+  padding-bottom: calc(12px + var(--safe-bottom));
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+.chat-input-area textarea {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  padding: 10px 12px;
+  resize: none;
+  min-height: 42px;
+  max-height: 120px;
+  line-height: 1.4;
+  outline: none;
+}
+.chat-input-area textarea:focus { border-color: var(--accent); }
+.chat-input-area textarea::placeholder { color: var(--text-muted); }
+
+.send-btn {
+  background: var(--accent-dim);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  width: 42px;
+  height: 42px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.send-btn:hover:not(:disabled) { opacity: 0.85; }
+
+/* Status indicator */
+.status-bar {
+  padding: 6px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+.status-dot.connected { background: var(--green); }
+.status-dot.error { background: var(--red); }
+.status-dot.working { background: var(--yellow); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Setup & Debug shared */
+.panel {
+  padding: 16px;
+}
+.panel h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+.panel h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 20px 0 8px;
+}
+.panel h3:first-child { margin-top: 0; }
+
+.field {
+  margin-bottom: 12px;
+}
+.field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.field input, .field select {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  padding: 8px 12px;
+  outline: none;
+}
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.field input::placeholder { color: var(--text-muted); }
+.field .hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.btn:hover { border-color: var(--text-muted); }
+.btn.primary {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+  color: #fff;
+}
+.btn.primary:hover { opacity: 0.85; }
+.btn.danger {
+  background: var(--red-dim);
+  border-color: var(--red-dim);
+  color: #fff;
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Project list */
+.project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.project-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+.project-item.active {
+  border-color: var(--accent);
+  background: rgba(88, 166, 255, 0.05);
+}
+.project-item .name { flex: 1; }
+.project-item .badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--accent-dim);
+  color: #fff;
+}
+.project-item button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+}
+.project-item button:hover { color: var(--red); }
+
+/* Debug Console */
+.console-output {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.console-output .log-line { color: var(--text-secondary); }
+.console-output .log-ok { color: var(--green); }
+.console-output .log-err { color: var(--red); }
+.console-output .log-warn { color: var(--yellow); }
+.console-output .log-info { color: var(--accent); }
+
+/* Test result badges */
+.test-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.test-result.pass { background: rgba(63, 185, 80, 0.15); color: var(--green); }
+.test-result.fail { background: rgba(248, 81, 73, 0.15); color: var(--red); }
+.test-result.pending { background: rgba(139, 148, 158, 0.15); color: var(--text-secondary); }
+
+/* Deploy log */
+.deploy-log {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.deploy-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+.deploy-entry .time {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+.deploy-entry .sha {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.deploy-entry .deploy-msg {
+  color: var(--text-secondary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* File selector */
+.file-select {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.file-select select {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Loading spinner */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--text-muted);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Token mask */
+.token-field {
+  position: relative;
+}
+.token-field input {
+  padding-right: 40px;
+}
+.token-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+}
+.token-toggle:hover { color: var(--text-secondary); }
+
+/* Separator */
+.sep {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+.empty-state .icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+.empty-state p {
+  font-size: 13px;
+  max-width: 280px;
+  margin: 0 auto;
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <button class="active" data-tab="chat">Chat</button>
+    <button data-tab="setup">Setup</button>
+    <button data-tab="debug">Debug</button>
+    <button data-tab="log">Log</button>
+  </div>
+
+  <!-- Chat Tab -->
+  <div id="tab-chat" class="tab-content active">
+    <div class="status-bar">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Not configured</span>
+      <span style="margin-left:auto;font-family:var(--font-mono)" id="activeProjectLabel">No project</span>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="empty-state" id="chatEmpty">
+        <div class="icon">&#9878;</div>
+        <p>Type an instruction to modify your project. Forge will fetch the file, send it to Claude, and show you what changed.</p>
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <textarea id="chatInput" placeholder="Describe what you want changed..." rows="1"></textarea>
+      <button class="send-btn" id="sendBtn" disabled>&#9654;</button>
+    </div>
+  </div>
+
+  <!-- Setup Tab -->
+  <div id="tab-setup" class="tab-content">
+    <div class="panel" style="overflow-y:auto;flex:1;padding-bottom:calc(20px + var(--safe-bottom))">
+      <h2>Configuration</h2>
+
+      <h3>API Keys</h3>
+      <div class="field">
+        <label>GitHub Personal Access Token</label>
+        <div class="token-field">
+          <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+          <button class="token-toggle" onclick="toggleVis('ghToken')" title="Show/hide">&#9673;</button>
+        </div>
+        <div class="hint">Needs repo scope. Stored in localStorage only.</div>
+      </div>
+      <div class="field">
+        <label>Claude API Key</label>
+        <div class="token-field">
+          <input type="password" id="claudeKey" placeholder="sk-ant-xxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+          <button class="token-toggle" onclick="toggleVis('claudeKey')" title="Show/hide">&#9673;</button>
+        </div>
+        <div class="hint">Anthropic API key. Stored in localStorage only.</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="saveCredentials()">Save Keys</button>
+      </div>
+
+      <div class="sep"></div>
+
+      <h3>Projects</h3>
+      <div class="project-list" id="projectList"></div>
+      <div class="field">
+        <label>Add Project (owner/repo)</label>
+        <input type="text" id="newProject" placeholder="vgainullin/fitness-tracker" spellcheck="false">
+      </div>
+      <div class="field">
+        <label>Default File Path</label>
+        <input type="text" id="newProjectFile" placeholder="index.html" spellcheck="false" value="index.html">
+      </div>
+      <div class="field">
+        <label>Branch</label>
+        <input type="text" id="newProjectBranch" placeholder="main" spellcheck="false" value="main">
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="addProject()">Add Project</button>
+      </div>
+
+      <div class="sep"></div>
+
+      <h3>Claude Model</h3>
+      <div class="field">
+        <label>Model</label>
+        <select id="claudeModel">
+          <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+          <option value="claude-haiku-4-20250414">Claude Haiku 4</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="saveModel()">Save Model</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debug Tab -->
+  <div id="tab-debug" class="tab-content">
+    <div class="panel" style="overflow-y:auto;flex:1;padding-bottom:calc(20px + var(--safe-bottom))">
+      <h2>Debug Console</h2>
+
+      <h3>Connection Tests</h3>
+      <div class="btn-row" style="margin-bottom:12px">
+        <button class="btn" onclick="testGitHub()">Test GitHub API</button>
+        <button class="btn" onclick="testClaude()">Test Claude API</button>
+        <button class="btn" onclick="testFull()">Test Full Loop</button>
+      </div>
+      <div id="testResults" style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap"></div>
+
+      <h3>Console Output</h3>
+      <div class="console-output" id="consoleOutput"></div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn" onclick="clearConsole()">Clear</button>
+        <button class="btn" onclick="exportConsole()">Copy Log</button>
+      </div>
+
+      <div class="sep"></div>
+
+      <h3>State Inspector</h3>
+      <div class="btn-row">
+        <button class="btn" onclick="inspectState()">Dump State</button>
+        <button class="btn danger" onclick="if(confirm('Clear ALL Forge data from localStorage?')){localStorage.clear();location.reload();}">Reset All Data</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log Tab -->
+  <div id="tab-log" class="tab-content">
+    <div class="panel" style="overflow-y:auto;flex:1;padding-bottom:calc(20px + var(--safe-bottom))">
+      <h2>Deployment Log</h2>
+      <div class="deploy-log" id="deployLog">
+        <div class="empty-state">
+          <div class="icon">&#128220;</div>
+          <p>No deployments yet. Push a change from the Chat tab to see it here.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+
+const STATE_KEY = 'forge_state';
+
+const defaultState = {
+  ghToken: '',
+  claudeKey: '',
+  claudeModel: 'claude-sonnet-4-20250514',
+  projects: [],
+  activeProject: null,
+  deployLog: [],
+  chatHistory: []
+};
+
+let state = loadState();
+let pendingChange = null; // { file, path, sha, newContent, oldContent, repo, branch }
+let isProcessing = false;
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STATE_KEY);
+    if (raw) return { ...defaultState, ...JSON.parse(raw) };
+  } catch(e) {}
+  return { ...defaultState };
+}
+
+function saveState() {
+  localStorage.setItem(STATE_KEY, JSON.stringify(state));
+}
+
+// ─── Tab Navigation ──────────────────────────────────────────────────────────
+
+document.querySelectorAll('.tab-bar button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ─── Setup Tab ───────────────────────────────────────────────────────────────
+
+function initSetup() {
+  document.getElementById('ghToken').value = state.ghToken;
+  document.getElementById('claudeKey').value = state.claudeKey;
+  document.getElementById('claudeModel').value = state.claudeModel;
+  renderProjects();
+  updateStatus();
+}
+
+function saveCredentials() {
+  state.ghToken = document.getElementById('ghToken').value.trim();
+  state.claudeKey = document.getElementById('claudeKey').value.trim();
+  saveState();
+  updateStatus();
+  logConsole('Credentials saved', 'ok');
+}
+
+function saveModel() {
+  state.claudeModel = document.getElementById('claudeModel').value;
+  saveState();
+  logConsole('Model set to ' + state.claudeModel, 'ok');
+}
+
+function toggleVis(id) {
+  const input = document.getElementById(id);
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+function addProject() {
+  const repo = document.getElementById('newProject').value.trim();
+  const file = document.getElementById('newProjectFile').value.trim() || 'index.html';
+  const branch = document.getElementById('newProjectBranch').value.trim() || 'main';
+  if (!repo || !repo.includes('/')) {
+    logConsole('Invalid repo format. Use owner/repo', 'err');
+    return;
+  }
+  if (state.projects.find(p => p.repo === repo)) {
+    logConsole('Project already exists: ' + repo, 'warn');
+    return;
+  }
+  state.projects.push({ repo, file, branch });
+  if (!state.activeProject) state.activeProject = repo;
+  saveState();
+  renderProjects();
+  updateStatus();
+  document.getElementById('newProject').value = '';
+  logConsole('Added project: ' + repo, 'ok');
+}
+
+function removeProject(repo) {
+  state.projects = state.projects.filter(p => p.repo !== repo);
+  if (state.activeProject === repo) {
+    state.activeProject = state.projects.length ? state.projects[0].repo : null;
+  }
+  saveState();
+  renderProjects();
+  updateStatus();
+  logConsole('Removed project: ' + repo, 'ok');
+}
+
+function setActiveProject(repo) {
+  state.activeProject = repo;
+  saveState();
+  renderProjects();
+  updateStatus();
+  logConsole('Active project: ' + repo, 'info');
+}
+
+function renderProjects() {
+  const el = document.getElementById('projectList');
+  if (!state.projects.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:12px">No projects added yet.</div>';
+    return;
+  }
+  el.innerHTML = state.projects.map(p => `
+    <div class="project-item ${p.repo === state.activeProject ? 'active' : ''}">
+      <span class="name">${esc(p.repo)}</span>
+      <span style="color:var(--text-muted);font-size:11px">${esc(p.file)} @ ${esc(p.branch)}</span>
+      ${p.repo === state.activeProject ? '<span class="badge">active</span>' : `<button onclick="setActiveProject('${esc(p.repo)}')" title="Set active">&#9679;</button>`}
+      <button onclick="removeProject('${esc(p.repo)}')" title="Remove">&#10005;</button>
+    </div>
+  `).join('');
+}
+
+// ─── Status ──────────────────────────────────────────────────────────────────
+
+function updateStatus() {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  const label = document.getElementById('activeProjectLabel');
+
+  const hasGH = !!state.ghToken;
+  const hasClaude = !!state.claudeKey;
+  const hasProject = !!state.activeProject;
+
+  if (hasGH && hasClaude && hasProject) {
+    dot.className = 'status-dot connected';
+    text.textContent = 'Ready';
+    document.getElementById('sendBtn').disabled = false;
+  } else {
+    dot.className = 'status-dot';
+    const missing = [];
+    if (!hasGH) missing.push('GitHub token');
+    if (!hasClaude) missing.push('Claude key');
+    if (!hasProject) missing.push('project');
+    text.textContent = 'Missing: ' + missing.join(', ');
+    document.getElementById('sendBtn').disabled = true;
+  }
+
+  label.textContent = state.activeProject || 'No project';
+}
+
+// ─── Debug Console ───────────────────────────────────────────────────────────
+
+function logConsole(msg, level = 'log') {
+  const el = document.getElementById('consoleOutput');
+  const ts = new Date().toLocaleTimeString();
+  const line = document.createElement('div');
+  line.className = 'log-' + (level === 'ok' ? 'ok' : level === 'err' ? 'err' : level === 'warn' ? 'warn' : level === 'info' ? 'info' : 'line');
+  line.textContent = `[${ts}] ${msg}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearConsole() {
+  document.getElementById('consoleOutput').innerHTML = '';
+}
+
+function exportConsole() {
+  const text = document.getElementById('consoleOutput').innerText;
+  navigator.clipboard.writeText(text).then(
+    () => logConsole('Log copied to clipboard', 'ok'),
+    () => logConsole('Failed to copy log', 'err')
+  );
+}
+
+function inspectState() {
+  const safe = { ...state, ghToken: state.ghToken ? '***' + state.ghToken.slice(-4) : '(empty)', claudeKey: state.claudeKey ? '***' + state.claudeKey.slice(-4) : '(empty)' };
+  logConsole(JSON.stringify(safe, null, 2), 'info');
+}
+
+// ─── API: GitHub ─────────────────────────────────────────────────────────────
+
+async function ghAPI(path, options = {}) {
+  const resp = await fetch('https://api.github.com' + path, {
+    headers: {
+      'Authorization': 'token ' + state.ghToken,
+      'Accept': 'application/vnd.github.v3+json',
+      ...(options.headers || {})
+    },
+    ...options
+  });
+  if (!resp.ok) {
+    const body = await resp.text();
+    throw new Error(`GitHub ${resp.status}: ${body}`);
+  }
+  return resp.json();
+}
+
+async function fetchFile(repo, path, branch) {
+  logConsole(`Fetching ${repo}/${path} @ ${branch}`, 'info');
+  const data = await ghAPI(`/repos/${repo}/contents/${path}?ref=${branch}`);
+  const content = atob(data.content.replace(/\n/g, ''));
+  logConsole(`Fetched ${content.length} bytes, SHA: ${data.sha.slice(0, 7)}`, 'ok');
+  return { content, sha: data.sha };
+}
+
+async function pushFile(repo, path, branch, content, sha, message) {
+  logConsole(`Pushing to ${repo}/${path} @ ${branch}`, 'info');
+  const data = await ghAPI(`/repos/${repo}/contents/${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message,
+      content: btoa(unescape(encodeURIComponent(content))),
+      sha,
+      branch
+    })
+  });
+  const newSha = data.content.sha.slice(0, 7);
+  logConsole(`Pushed successfully. New SHA: ${newSha}`, 'ok');
+  return data;
+}
+
+// ─── API: Claude ─────────────────────────────────────────────────────────────
+
+async function callClaude(systemPrompt, userMessage) {
+  logConsole(`Calling Claude (${state.claudeModel})...`, 'info');
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': state.claudeKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: state.claudeModel,
+      max_tokens: 16384,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }]
+    })
+  });
+  if (!resp.ok) {
+    const body = await resp.text();
+    throw new Error(`Claude ${resp.status}: ${body}`);
+  }
+  const data = await resp.json();
+  const text = data.content[0].text;
+  const usage = data.usage;
+  logConsole(`Claude responded: ${text.length} chars, ${usage.input_tokens} in / ${usage.output_tokens} out tokens`, 'ok');
+  return text;
+}
+
+// ─── Connection Tests ────────────────────────────────────────────────────────
+
+async function testGitHub() {
+  const el = document.getElementById('testResults');
+  try {
+    logConsole('Testing GitHub API...', 'info');
+    const user = await ghAPI('/user');
+    logConsole(`GitHub OK: authenticated as ${user.login}`, 'ok');
+    showTestResult(el, 'GitHub', true, user.login);
+  } catch (e) {
+    logConsole('GitHub FAIL: ' + e.message, 'err');
+    showTestResult(el, 'GitHub', false, e.message);
+  }
+}
+
+async function testClaude() {
+  const el = document.getElementById('testResults');
+  try {
+    logConsole('Testing Claude API...', 'info');
+    const reply = await callClaude('You are a test. Reply with exactly: OK', 'Test connection. Reply with exactly: OK');
+    logConsole(`Claude OK: replied "${reply.slice(0, 50)}"`, 'ok');
+    showTestResult(el, 'Claude', true, reply.slice(0, 30));
+  } catch (e) {
+    logConsole('Claude FAIL: ' + e.message, 'err');
+    showTestResult(el, 'Claude', false, e.message);
+  }
+}
+
+async function testFull() {
+  const el = document.getElementById('testResults');
+  if (!state.activeProject) {
+    logConsole('No active project set', 'err');
+    showTestResult(el, 'Full Loop', false, 'No active project');
+    return;
+  }
+  try {
+    const proj = state.projects.find(p => p.repo === state.activeProject);
+    logConsole('Testing full loop (fetch only, no push)...', 'info');
+    const { content } = await fetchFile(proj.repo, proj.file, proj.branch);
+    logConsole('File fetched OK. Sending to Claude for minimal edit...', 'info');
+    const prompt = `Here is the current content of ${proj.file}:\n\n${content}\n\nAdd a comment at the very top: <!-- Forge test: ${new Date().toISOString()} -->\n\nReturn the COMPLETE modified file. Output ONLY the file content, nothing else.`;
+    const result = await callClaude('You modify code files. Return the complete file, no explanations, no markdown fences.', prompt);
+    logConsole(`Full loop OK: received ${result.length} chars back`, 'ok');
+    showTestResult(el, 'Full Loop', true, `${content.length} → ${result.length} chars`);
+  } catch (e) {
+    logConsole('Full loop FAIL: ' + e.message, 'err');
+    showTestResult(el, 'Full Loop', false, e.message);
+  }
+}
+
+function showTestResult(container, name, ok, detail) {
+  // Remove old result with same name
+  container.querySelectorAll('.test-result').forEach(el => {
+    if (el.dataset.name === name) el.remove();
+  });
+  const badge = document.createElement('span');
+  badge.className = 'test-result ' + (ok ? 'pass' : 'fail');
+  badge.dataset.name = name;
+  badge.textContent = (ok ? '\u2713 ' : '\u2717 ') + name;
+  badge.title = detail;
+  container.appendChild(badge);
+}
+
+// ─── Chat Logic ──────────────────────────────────────────────────────────────
+
+const chatInput = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+const chatMessages = document.getElementById('chatMessages');
+
+// Auto-resize textarea
+chatInput.addEventListener('input', () => {
+  chatInput.style.height = 'auto';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+});
+
+// Send on Enter (Shift+Enter for newline)
+chatInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendInstruction();
+  }
+});
+
+sendBtn.addEventListener('click', sendInstruction);
+
+async function sendInstruction() {
+  const text = chatInput.value.trim();
+  if (!text || isProcessing) return;
+
+  // Hide empty state
+  const empty = document.getElementById('chatEmpty');
+  if (empty) empty.remove();
+
+  // Show user message
+  addMessage(text, 'user');
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+
+  isProcessing = true;
+  setWorking(true);
+
+  const proj = state.projects.find(p => p.repo === state.activeProject);
+  if (!proj) {
+    addMessage('No active project. Go to Setup and add one.', 'error');
+    isProcessing = false;
+    setWorking(false);
+    return;
+  }
+
+  try {
+    // Step 1: Fetch current file
+    addMessage(`Fetching \`${proj.file}\` from \`${proj.repo}\`...`, 'system');
+    const { content: oldContent, sha } = await fetchFile(proj.repo, proj.file, proj.branch);
+
+    // Step 2: Send to Claude
+    addMessage(`Sending to Claude (${state.claudeModel.split('-').slice(0,2).join(' ')})...`, 'system');
+
+    const systemPrompt = `You are a code editor. You receive a complete file and an instruction. You return the COMPLETE modified file.
+
+Rules:
+- Return ONLY the file content. No explanations, no markdown fences, no commentary.
+- Make minimal changes to satisfy the instruction.
+- Do not remove or change code unrelated to the instruction.
+- If the instruction is unclear, make your best interpretation and proceed.
+- The output must be a valid, working file.`;
+
+    const userMsg = `Here is the current content of ${proj.file} (${oldContent.length} bytes):\n\n${oldContent}\n\nInstruction: ${text}\n\nReturn the COMPLETE modified file. Output ONLY the file content, nothing else. No markdown fences.`;
+
+    const newContent = await callClaude(systemPrompt, userMsg);
+
+    // Step 3: Compute diff stats
+    const stats = computeDiffStats(oldContent, newContent);
+
+    // Step 4: Show diff and ask for approval
+    const diffMsg = document.createElement('div');
+    diffMsg.className = 'msg system';
+    diffMsg.style.maxWidth = '92%';
+    diffMsg.innerHTML = `
+      <div style="margin-bottom:6px"><strong>Changes ready:</strong></div>
+      <div class="diff-stats">
+        <div class="added">+${stats.added} lines added</div>
+        <div class="removed">-${stats.removed} lines removed</div>
+        <div class="changed">${stats.totalOld} → ${stats.totalNew} total lines</div>
+        <div style="color:var(--text-muted);margin-top:4px">${newContent.length.toLocaleString()} bytes</div>
+      </div>
+      <div class="approval-bar">
+        <button class="btn-approve" id="approveBtn">Push to GitHub</button>
+        <button class="btn-reject" id="rejectBtn">Discard</button>
+      </div>
+    `;
+    chatMessages.appendChild(diffMsg);
+    scrollChat();
+
+    // Store pending change
+    pendingChange = { oldContent, newContent, sha, repo: proj.repo, path: proj.file, branch: proj.branch, instruction: text };
+
+    // Wire up approval buttons
+    document.getElementById('approveBtn').addEventListener('click', approvePush);
+    document.getElementById('rejectBtn').addEventListener('click', rejectPush);
+
+  } catch (e) {
+    addMessage('Error: ' + e.message, 'error');
+    logConsole('Instruction failed: ' + e.message, 'err');
+  }
+
+  isProcessing = false;
+  setWorking(false);
+}
+
+async function approvePush() {
+  if (!pendingChange) return;
+  const { newContent, sha, repo, path, branch, instruction } = pendingChange;
+
+  // Disable buttons
+  const approveBtn = document.getElementById('approveBtn');
+  const rejectBtn = document.getElementById('rejectBtn');
+  if (approveBtn) { approveBtn.disabled = true; approveBtn.textContent = 'Pushing...'; }
+  if (rejectBtn) rejectBtn.disabled = true;
+
+  setWorking(true);
+
+  try {
+    const commitMsg = `Forge: ${instruction.slice(0, 72)}`;
+    const data = await pushFile(repo, path, branch, newContent, sha, commitMsg);
+    const newSha = data.content.sha;
+
+    addMessage(`Pushed successfully.\nCommit: \`${newSha.slice(0, 7)}\`\nPages will deploy in ~60s.`, 'system');
+
+    // Add to deploy log
+    state.deployLog.unshift({
+      time: new Date().toISOString(),
+      sha: newSha.slice(0, 7),
+      repo,
+      message: instruction.slice(0, 100)
+    });
+    if (state.deployLog.length > 50) state.deployLog = state.deployLog.slice(0, 50);
+    saveState();
+    renderDeployLog();
+
+  } catch (e) {
+    addMessage('Push failed: ' + e.message, 'error');
+    logConsole('Push failed: ' + e.message, 'err');
+  }
+
+  pendingChange = null;
+  setWorking(false);
+
+  // Remove approval buttons
+  if (approveBtn) approveBtn.remove();
+  if (rejectBtn) rejectBtn.remove();
+}
+
+function rejectPush() {
+  pendingChange = null;
+  addMessage('Changes discarded.', 'system');
+  const approveBtn = document.getElementById('approveBtn');
+  const rejectBtn = document.getElementById('rejectBtn');
+  if (approveBtn) approveBtn.remove();
+  if (rejectBtn) rejectBtn.remove();
+}
+
+function computeDiffStats(oldText, newText) {
+  const oldLines = oldText.split('\n');
+  const newLines = newText.split('\n');
+
+  // Simple LCS-based diff counting
+  const oldSet = new Set(oldLines);
+  const newSet = new Set(newLines);
+
+  let added = 0, removed = 0;
+  for (const line of newLines) {
+    if (!oldSet.has(line)) added++;
+  }
+  for (const line of oldLines) {
+    if (!newSet.has(line)) removed++;
+  }
+
+  return { added, removed, totalOld: oldLines.length, totalNew: newLines.length };
+}
+
+function addMessage(text, type) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + type;
+  // Simple inline code rendering
+  div.innerHTML = text.replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\n/g, '<br>');
+  chatMessages.appendChild(div);
+  scrollChat();
+}
+
+function scrollChat() {
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function setWorking(on) {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  if (on) {
+    dot.className = 'status-dot working';
+    text.textContent = 'Working...';
+    sendBtn.disabled = true;
+  } else {
+    updateStatus();
+  }
+}
+
+// ─── Deploy Log ──────────────────────────────────────────────────────────────
+
+function renderDeployLog() {
+  const el = document.getElementById('deployLog');
+  if (!state.deployLog.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">&#128220;</div><p>No deployments yet. Push a change from the Chat tab to see it here.</p></div>';
+    return;
+  }
+  el.innerHTML = state.deployLog.map(entry => {
+    const d = new Date(entry.time);
+    const time = d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+    return `
+      <div class="deploy-entry">
+        <span class="time">${esc(time)}</span>
+        <span class="sha">${esc(entry.sha)}</span>
+        <span class="deploy-msg">${esc(entry.message)}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─── Utilities ───────────────────────────────────────────────────────────────
+
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+
+initSetup();
+renderDeployLog();
+logConsole('Forge initialized', 'info');
+if (state.ghToken && state.claudeKey && state.activeProject) {
+  logConsole('Ready. Active project: ' + state.activeProject, 'ok');
+}
+</script>
+</body>
+</html>
