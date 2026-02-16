@@ -921,7 +921,7 @@ async function callClaude(systemPrompt, userMessage) {
     },
     body: JSON.stringify({
       model: state.claudeModel,
-      max_tokens: 16384,
+      max_tokens: 8192,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }]
     })
@@ -935,6 +935,46 @@ async function callClaude(systemPrompt, userMessage) {
   const usage = data.usage;
   logConsole(`Claude responded: ${text.length} chars, ${usage.input_tokens} in / ${usage.output_tokens} out tokens`, 'ok');
   return text;
+}
+
+// ─── Patch Application ──────────────────────────────────────────────────────
+
+function applyPatches(original, patchText) {
+  // Parse SEARCH/REPLACE blocks from Claude's response
+  const blocks = [];
+  const regex = /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> REPLACE/g;
+  let m;
+  while ((m = regex.exec(patchText)) !== null) {
+    blocks.push({ search: m[1], replace: m[2] });
+  }
+  if (blocks.length === 0) {
+    throw new Error('No SEARCH/REPLACE blocks found in Claude response');
+  }
+  let result = original;
+  for (const block of blocks) {
+    const idx = result.indexOf(block.search);
+    if (idx === -1) {
+      // Try trimmed match as fallback
+      const trimSearch = block.search.trim();
+      const lines = result.split('\n');
+      let found = false;
+      for (let i = 0; i <= lines.length; i++) {
+        const window = lines.slice(i, i + block.search.split('\n').length).join('\n');
+        if (window.trim() === trimSearch) {
+          result = result.replace(window, block.replace);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        logConsole(`WARN: Could not find SEARCH block (${block.search.slice(0, 60)}...)`, 'err');
+      }
+    } else {
+      result = result.slice(0, idx) + block.replace + result.slice(idx + block.search.length);
+    }
+  }
+  logConsole(`Applied ${blocks.length} patch(es)`, 'ok');
+  return result;
 }
 
 // ─── Connection Tests ────────────────────────────────────────────────────────
@@ -977,10 +1017,11 @@ async function testFull() {
     logConsole('Testing full loop (fetch only, no push)...', 'info');
     const { content } = await fetchFile(proj.repo, proj.file, proj.branch);
     logConsole('File fetched OK. Sending to Claude for minimal edit...', 'info');
-    const prompt = `Here is the current content of ${proj.file}:\n\n${content}\n\nAdd a comment at the very top: <!-- Forge test: ${new Date().toISOString()} -->\n\nReturn the COMPLETE modified file. Output ONLY the file content, nothing else.`;
-    const result = await callClaude('You modify code files. Return the complete file, no explanations, no markdown fences.', prompt);
-    logConsole(`Full loop OK: received ${result.length} chars back`, 'ok');
-    showTestResult(el, 'Full Loop', true, `${content.length} → ${result.length} chars`);
+    const first3 = content.split('\n').slice(0, 3).join('\n');
+    const prompt = `Here are the first 3 lines of ${proj.file}:\n\n${first3}\n\nAdd a comment before line 1: <!-- Forge test: ${new Date().toISOString()} -->\n\nReturn your changes in SEARCH/REPLACE format:\n<<<<<<< SEARCH\noriginal lines\n=======\nmodified lines\n>>>>>>> REPLACE`;
+    const result = await callClaude('You modify code. Return ONLY SEARCH/REPLACE blocks. No explanations.', prompt);
+    logConsole(`Full loop OK: received ${result.length} chars, patch parsed`, 'ok');
+    showTestResult(el, 'Full Loop', true, `patch: ${result.length} chars`);
   } catch (e) {
     logConsole('Full loop FAIL: ' + e.message, 'err');
     showTestResult(el, 'Full Loop', false, e.message);
@@ -1054,18 +1095,27 @@ async function sendInstruction() {
     // Step 2: Send to Claude
     addMessage(`Sending to Claude (${state.claudeModel.split('-').slice(0,2).join(' ')})...`, 'system');
 
-    const systemPrompt = `You are a code editor. You receive a complete file and an instruction. You return the COMPLETE modified file.
+    const systemPrompt = `You are a code editor. You receive a file and an instruction. Return ONLY the changes using SEARCH/REPLACE blocks.
+
+Format for each change:
+<<<<<<< SEARCH
+exact lines from the original file
+=======
+replacement lines
+>>>>>>> REPLACE
 
 Rules:
-- Return ONLY the file content. No explanations, no markdown fences, no commentary.
+- Return ONLY SEARCH/REPLACE blocks. No explanations, no commentary.
+- SEARCH blocks must match the original file EXACTLY (same whitespace, same content).
 - Make minimal changes to satisfy the instruction.
-- Do not remove or change code unrelated to the instruction.
-- If the instruction is unclear, make your best interpretation and proceed.
-- The output must be a valid, working file.`;
+- Use multiple SEARCH/REPLACE blocks if changes are in different parts of the file.
+- Do not change code unrelated to the instruction.
+- If the instruction is unclear, make your best interpretation and proceed.`;
 
-    const userMsg = `Here is the current content of ${proj.file} (${oldContent.length} bytes):\n\n${oldContent}\n\nInstruction: ${text}\n\nReturn the COMPLETE modified file. Output ONLY the file content, nothing else. No markdown fences.`;
+    const userMsg = `Here is the current content of ${proj.file} (${oldContent.length} bytes):\n\n${oldContent}\n\nInstruction: ${text}\n\nReturn ONLY SEARCH/REPLACE blocks for the changes needed.`;
 
-    const newContent = await callClaude(systemPrompt, userMsg);
+    const patchResponse = await callClaude(systemPrompt, userMsg);
+    const newContent = applyPatches(oldContent, patchResponse);
 
     // Step 3: Compute diff stats
     const stats = computeDiffStats(oldContent, newContent);
