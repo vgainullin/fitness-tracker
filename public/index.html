@@ -185,10 +185,28 @@
   /* Tips */
   .tip-toggle { background: none; border: none; color: var(--blue); font-family: var(--font); font-size: 12px; cursor: pointer; padding: 4px 0; }
   .tip-text { font-size: 12px; color: var(--text-dim); line-height: 1.5; padding: 8px 0 4px; }
+
+  /* Sign-in gate */
+  #sign-in-gate { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 40px 24px; gap: 24px; }
+  #sign-in-gate h1 { font-size: 36px; }
+  #sign-in-gate .subtitle { color: var(--text-dim); font-size: 15px; max-width: 280px; }
+  #sign-in-gate .signin-btn { background: #fff; color: #1a1a1a; border: none; border-radius: 8px; padding: 14px 28px; font-family: var(--font); font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+  #sign-in-gate .signin-btn:active { opacity: 0.8; }
+  #sign-in-gate .setup-hint { color: var(--text-faint); font-size: 12px; max-width: 300px; line-height: 1.5; }
+  #sign-in-gate .setup-input { margin-top: 8px; }
+  .loading-spinner { color: var(--text-dim); font-size: 14px; padding: 40px; text-align: center; }
 </style>
 </head>
 <body>
-<div id="app">
+<div id="sign-in-gate">
+  <h1>Iron Log</h1>
+  <p class="subtitle">Your gym. Your data. Stored in Google Sheets.</p>
+  <div id="gate-content">
+    <p class="loading-spinner">Loading...</p>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
 
   <div id="screen-home" class="screen active">
     <div class="mb-20"><h1>Iron Log</h1><p class="dim small mt-8">Your gym. Your data.</p></div>
@@ -249,10 +267,9 @@
   <div id="screen-settings" class="screen">
     <h1 class="mb-20">Settings</h1>
     <div class="settings-section">
-      <h3>Google Sheets Sync</h3>
-      <p class="small dim mb-12">Sign in with Google to sync workouts and weight to a spreadsheet.</p>
-      <div id="google-auth-area"></div>
-      <div id="sheets-status" class="mt-8"></div>
+      <h3>Account</h3>
+      <p class="small dim mb-12">Signed in. Data saved to Google Sheets.</p>
+      <button class="btn btn-secondary btn-sm btn-full" onclick="googleSignOut()">Sign out</button>
     </div>
     <div class="settings-section">
       <h3>AI Coach (Anthropic)</h3>
@@ -265,9 +282,7 @@
     </div>
     <div class="settings-section">
       <h3>Data</h3>
-      <p class="small dim mb-12">Running in <strong id="mode-label">local mode</strong>. <span id="mode-detail"></span></p>
-      <button class="btn btn-secondary btn-sm btn-full mb-8" onclick="exportData()">Export Data (JSON)</button>
-      <button class="btn btn-danger btn-sm btn-full" onclick="confirmClearData()">Clear Local Data</button>
+      <button class="btn btn-secondary btn-sm btn-full" onclick="exportData()">Export Data (JSON)</button>
     </div>
   </div>
 
@@ -536,8 +551,7 @@ function dbSet(key, val) {
   });
 }
 
-// Settings cache (loaded from IDB at init)
-let settings = { anthropicKey: '', anthropicModel: 'claude-haiku-4-5-20251001', weightUnit: 'kg', spreadsheetId: '' };
+let settings = { anthropicKey: '', anthropicModel: 'claude-haiku-4-5-20251001', weightUnit: 'kg', spreadsheetId: '', googleClientId: '' };
 
 async function loadSettings() {
   await openSettingsDb();
@@ -556,90 +570,95 @@ async function saveSetting(key, val) {
 // GOOGLE IDENTITY SERVICES + SHEETS API
 // ============================================
 
-const GOOGLE_CLIENT_ID = ''; // Set via Settings or build config
 const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
 const SPREADSHEET_TITLE = 'Iron Log Data';
 
-let gtoken = null; // Google access token
+let gtoken = null;
 let tokenClient = null;
 
-function initGoogleAuth() {
-  const clientId = settings.googleClientId || GOOGLE_CLIENT_ID;
-  if (!clientId || typeof google === 'undefined') {
-    renderGoogleAuthArea();
+function renderGate() {
+  const gc = document.getElementById('gate-content');
+  const clientId = settings.googleClientId;
+  if (!clientId) {
+    gc.innerHTML = '<div class="input-group" style="text-align:left;width:100%;max-width:320px;"><div class="input-label">Google OAuth Client ID</div><input type="text" id="gate-client-id" placeholder="xxxx.apps.googleusercontent.com" style="font-size:13px;"></div><button class="signin-btn" onclick="saveClientIdAndInit()">Save & Continue</button><p class="setup-hint mt-12">Create one at console.cloud.google.com > APIs & Services > Credentials > OAuth 2.0 Client ID (Web application). Add this site as an authorized JS origin.</p>';
     return;
   }
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: clientId,
-    scope: SHEETS_SCOPE,
-    callback: onGoogleToken,
-  });
-  renderGoogleAuthArea();
+  if (typeof google === 'undefined') {
+    gc.innerHTML = '<p class="subtitle">Loading Google services...</p>';
+    setTimeout(renderGate, 500);
+    return;
+  }
+  if (!tokenClient) {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: SHEETS_SCOPE,
+      callback: onGoogleToken,
+    });
+  }
+  gc.innerHTML = '<button class="signin-btn" onclick="googleSignIn()"><svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.01 24.01 0 0 0 0 21.56l7.98-6.19z"/><path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Sign in with Google</button>';
 }
 
-function onGoogleToken(resp) {
+async function saveClientIdAndInit() {
+  const v = document.getElementById('gate-client-id').value.trim();
+  if (!v) return;
+  await saveSetting('googleClientId', v);
+  renderGate();
+}
+
+function googleSignIn() {
+  if (!tokenClient) return;
+  tokenClient.requestAccessToken({ prompt: '' });
+}
+
+async function onGoogleToken(resp) {
   if (resp.error) {
     toast('Google auth failed: ' + resp.error, true);
     return;
   }
   gtoken = resp.access_token;
-  toast('Signed in to Google');
-  updateModeLabel();
-  renderGoogleAuthArea();
-  ensureSpreadsheet();
-}
-
-function googleSignIn() {
-  if (!tokenClient) {
-    toast('Set Google Client ID in settings first');
-    return;
-  }
-  tokenClient.requestAccessToken({ prompt: '' });
+  await ensureSpreadsheet();
+  await loadDataFromSheets();
+  document.getElementById('sign-in-gate').style.display = 'none';
+  document.getElementById('app').style.display = '';
+  document.getElementById('anthropic-key').value = settings.anthropicKey;
+  document.getElementById('anthropic-model').value = settings.anthropicModel;
+  document.getElementById('weight-unit-btn').textContent = settings.weightUnit;
+  renderAll();
 }
 
 function googleSignOut() {
   if (gtoken) google.accounts.oauth2.revoke(gtoken);
   gtoken = null;
-  updateModeLabel();
-  renderGoogleAuthArea();
-  toast('Signed out');
-}
-
-function renderGoogleAuthArea() {
-  const area = document.getElementById('google-auth-area');
-  const clientId = settings.googleClientId || GOOGLE_CLIENT_ID;
-  let h = '';
-  if (!clientId) {
-    h += '<div class="input-group"><div class="input-label">Google OAuth Client ID</div><input type="text" id="google-client-id" placeholder="xxxx.apps.googleusercontent.com" oninput="saveSetting(\'googleClientId\',this.value.trim());initGoogleAuth()"></div>';
-    h += '<p class="small dim">Create one at console.cloud.google.com > APIs & Services > Credentials</p>';
-  } else if (gtoken) {
-    h += '<button class="btn btn-secondary btn-sm btn-full" onclick="googleSignOut()">Sign out of Google</button>';
-  } else {
-    h += '<button class="btn btn-primary btn-sm btn-full" onclick="googleSignIn()">Sign in with Google</button>';
-  }
-  area.innerHTML = h;
-  if (!clientId) {
-    const inp = document.getElementById('google-client-id');
-    if (inp && settings.googleClientId) inp.value = settings.googleClientId;
-  }
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('sign-in-gate').style.display = '';
+  renderGate();
 }
 
 async function sheetsApi(path, method, body) {
-  if (!gtoken) return null;
+  if (!gtoken) throw new Error('Not signed in');
   const opts = { method: method || 'GET', headers: { 'Authorization': 'Bearer ' + gtoken } };
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
   const resp = await fetch(SHEETS_BASE + path, opts);
-  if (resp.status === 401) { gtoken = null; updateModeLabel(); renderGoogleAuthArea(); toast('Google session expired, sign in again', true); return null; }
-  return await resp.json();
+  if (resp.status === 401) {
+    gtoken = null;
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('sign-in-gate').style.display = '';
+    renderGate();
+    throw new Error('Session expired');
+  }
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+  return data;
 }
 
 async function ensureSpreadsheet() {
   if (settings.spreadsheetId) {
-    const check = await sheetsApi('/' + settings.spreadsheetId + '?fields=spreadsheetId');
-    if (check && check.spreadsheetId) { updateSheetsStatus('Connected: ' + settings.spreadsheetId.substring(0,8) + '...'); return; }
+    try {
+      const check = await sheetsApi('/' + settings.spreadsheetId + '?fields=spreadsheetId');
+      if (check && check.spreadsheetId) return;
+    } catch(e) { /* spreadsheet gone, create new */ }
   }
-  // Create new spreadsheet
   const resp = await sheetsApi('', 'POST', {
     properties: { title: SPREADSHEET_TITLE },
     sheets: [
@@ -648,34 +667,59 @@ async function ensureSpreadsheet() {
       { properties: { title: 'Weight' } },
     ]
   });
-  if (resp && resp.spreadsheetId) {
-    await saveSetting('spreadsheetId', resp.spreadsheetId);
-    // Write headers
-    await sheetsApi('/' + resp.spreadsheetId + '/values/Workouts!A1:F1?valueInputOption=RAW', 'PUT',
-      { values: [['id','date','presetName','durationMinutes','notes','createdAt']] });
-    await sheetsApi('/' + resp.spreadsheetId + '/values/Sets!A1:I1?valueInputOption=RAW', 'PUT',
-      { values: [['id','workoutId','exerciseId','exerciseName','setNumber','weight','reps','effort','timestamp']] });
-    await sheetsApi('/' + resp.spreadsheetId + '/values/Weight!A1:F1?valueInputOption=RAW', 'PUT',
-      { values: [['id','date','weight','unit','notes','createdAt']] });
-    updateSheetsStatus('Created new spreadsheet');
-    toast('Spreadsheet created in your Drive');
-  } else {
-    updateSheetsStatus('Failed to create spreadsheet');
-  }
+  await saveSetting('spreadsheetId', resp.spreadsheetId);
+  await sheetsApi('/' + resp.spreadsheetId + '/values/Workouts!A1:F1?valueInputOption=RAW', 'PUT',
+    { values: [['id','date','presetName','durationMinutes','notes','createdAt']] });
+  await sheetsApi('/' + resp.spreadsheetId + '/values/Sets!A1:I1?valueInputOption=RAW', 'PUT',
+    { values: [['id','workoutId','exerciseId','exerciseName','setNumber','weight','reps','effort','timestamp']] });
+  await sheetsApi('/' + resp.spreadsheetId + '/values/Weight!A1:F1?valueInputOption=RAW', 'PUT',
+    { values: [['id','date','weight','unit','notes','createdAt']] });
+  toast('Spreadsheet created in your Drive');
 }
 
-function updateSheetsStatus(msg) {
-  const el = document.getElementById('sheets-status');
-  if (el) el.innerHTML = '<div class="connection-status status-connected"><span class="status-dot"></span> ' + msg + '</div>';
+// ============================================
+// SHEETS DATA LAYER (read/write)
+// ============================================
+
+async function loadDataFromSheets() {
+  const sid = settings.spreadsheetId;
+  // Batch read all data
+  const resp = await sheetsApi('/' + sid + '/values:batchGet?ranges=Workouts!A2:F&ranges=Sets!A2:I&ranges=Weight!A2:F');
+  const ranges = resp.valueRanges || [];
+  const workoutRows = (ranges[0] && ranges[0].values) || [];
+  const setRows = (ranges[1] && ranges[1].values) || [];
+  const weightRows = (ranges[2] && ranges[2].values) || [];
+
+  // Parse workouts
+  const workoutsById = {};
+  workoutRows.forEach(r => {
+    workoutsById[r[0]] = {
+      id: r[0], date: r[1], presetName: r[2]||null, durationMinutes: parseInt(r[3])||0, notes: r[4]||'',
+      exercises: [],
+    };
+  });
+
+  // Parse sets and group by workout + exercise
+  setRows.forEach(r => {
+    const wk = workoutsById[r[1]];
+    if (!wk) return;
+    let ex = wk.exercises.find(e => e.exerciseId === r[2]);
+    if (!ex) { ex = { exerciseId: r[2], exerciseName: r[3], sets: [] }; wk.exercises.push(ex); }
+    ex.sets.push({ id: r[0], weight: parseFloat(r[5])||0, reps: parseInt(r[6])||0, effort: r[7]||'' });
+  });
+
+  state.workoutHistory = Object.values(workoutsById).sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  // Parse weight log
+  state.weightLog = weightRows.map(r => ({
+    id: r[0], date: r[1], weight: parseFloat(r[2])||0, unit: r[3]||'kg', notes: r[4]||'',
+  })).sort((a,b) => new Date(b.date) - new Date(a.date));
 }
 
 async function syncWorkoutToSheets(workout) {
-  if (!gtoken || !settings.spreadsheetId) return;
   const sid = settings.spreadsheetId;
-  // Append workout row
   await sheetsApi('/' + sid + '/values/Workouts!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST',
     { values: [[workout.id, workout.date, workout.presetName||'', workout.durationMinutes||0, '', new Date().toISOString()]] });
-  // Append all sets
   const setRows = [];
   workout.exercises.forEach(ex => {
     ex.sets.forEach((s, si) => {
@@ -688,44 +732,25 @@ async function syncWorkoutToSheets(workout) {
 }
 
 async function syncWeightToSheets(entry) {
-  if (!gtoken || !settings.spreadsheetId) return;
   await sheetsApi('/' + settings.spreadsheetId + '/values/Weight!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST',
     { values: [[entry.id, entry.date, entry.weight, entry.unit, '', new Date().toISOString()]] });
 }
 
 // ============================================
-// APP STATE (localStorage for workout data)
+// APP STATE (in-memory, loaded from Sheets)
 // ============================================
 
 let state = {
-  exercises: [], presets: [],
-  weekPlan: { 0:null,1:null,2:null,3:null,4:null,5:null,6:null },
-  currentWorkout: null, workoutHistory: [], weightLog: [],
+  exercises: [...DEFAULT_EXERCISES],
+  presets: [...DEFAULT_PRESETS],
+  weekPlan: {0:null,1:'preset_push',2:null,3:'preset_pull',4:null,5:'preset_legs',6:null},
+  currentWorkout: null,
+  workoutHistory: [], // loaded from Sheets
+  weightLog: [],      // loaded from Sheets
 };
 
-function loadState() {
-  const saved = localStorage.getItem('ironlog_data');
-  if (saved) {
-    const p = JSON.parse(saved);
-    state.exercises = p.exercises || DEFAULT_EXERCISES;
-    state.presets = p.presets || DEFAULT_PRESETS;
-    state.weekPlan = p.weekPlan || {0:null,1:'preset_push',2:null,3:'preset_pull',4:null,5:'preset_legs',6:null};
-    state.workoutHistory = p.workoutHistory || [];
-    state.currentWorkout = p.currentWorkout || null;
-    state.weightLog = p.weightLog || [];
-  } else {
-    state.exercises = [...DEFAULT_EXERCISES];
-    state.presets = [...DEFAULT_PRESETS];
-    state.weekPlan = {0:null,1:'preset_push',2:null,3:'preset_pull',4:null,5:'preset_legs',6:null};
-  }
-}
-
-function saveState() {
-  localStorage.setItem('ironlog_data', JSON.stringify({
-    exercises:state.exercises, presets:state.presets, weekPlan:state.weekPlan,
-    workoutHistory:state.workoutHistory, currentWorkout:state.currentWorkout,
-    weightLog:state.weightLog,
-  }));
+function renderAll() {
+  renderHome(); renderHistory(); renderWeight(); renderChat();
 }
 
 // ============================================
@@ -734,16 +759,7 @@ function saveState() {
 
 async function init() {
   await loadSettings();
-  loadState();
-  document.getElementById('anthropic-key').value = settings.anthropicKey;
-  document.getElementById('anthropic-model').value = settings.anthropicModel;
-  document.getElementById('weight-unit-btn').textContent = settings.weightUnit;
-  updateModeLabel();
-  // Init Google auth after GIS library loads
-  if (typeof google !== 'undefined') initGoogleAuth();
-  else window.addEventListener('load', () => setTimeout(initGoogleAuth, 500));
-  if (state.currentWorkout) { switchTab('workout', document.querySelectorAll('nav button')[1]); renderWorkout(); startTimer(); }
-  renderHome(); renderHistory(); renderWeight(); renderChat();
+  renderGate();
 }
 
 // ============================================
@@ -838,7 +854,7 @@ function openDayAssign(di) {
 
 function assignDay(di, pid) {
   state.weekPlan[di] = pid;
-  saveState(); closeOverlay('day-assign-overlay'); renderHome();
+  closeOverlay('day-assign-overlay'); renderHome();
   const p = pid ? state.presets.find(x=>x.id===pid) : null;
   toast(DAY_NAMES[di]+' -> '+(p?p.name:'Rest'));
 }
@@ -870,7 +886,6 @@ let timerInterval = null;
 
 function startWorkout() {
   state.currentWorkout = { id:'wk_'+Date.now().toString(36), startTime:Date.now(), exercises:[] };
-  saveState();
   switchTab('workout', document.querySelectorAll('nav button')[1]);
   renderWorkout(); startTimer(); toast('Workout started');
 }
@@ -885,7 +900,6 @@ function startFromPreset(pid) {
     return { exerciseId:e.exerciseId, exerciseName:e.exerciseName, sets };
   });
   state.currentWorkout = { id:'wk_'+Date.now().toString(36), startTime:Date.now(), exercises, presetName:p.name };
-  saveState();
   switchTab('workout', document.querySelectorAll('nav button')[1]);
   renderWorkout(); startTimer(); toast(p.name+' session started');
 }
@@ -918,18 +932,21 @@ async function finishWorkout() {
     exercises:w.exercises.map(ex=>({exerciseId:ex.exerciseId,exerciseName:ex.exerciseName,
       sets:ex.sets.map(s=>({id:s.id, weight:s.weight, reps:s.reps, effort:s.effort||''}))})),
   };
-  state.workoutHistory.unshift(finished);
-  state.currentWorkout=null; saveState();
+  state.currentWorkout=null;
   document.getElementById('finish-confirm').style.display='none';
   switchTab('home', document.querySelectorAll('nav button')[0]);
-  renderHome(); toast('Workout saved -- '+dur+' min');
 
-  // Sync to Google Sheets
-  try { await syncWorkoutToSheets(finished); } catch(e) { console.error('Sheets sync:', e); }
+  try {
+    await syncWorkoutToSheets(finished);
+    state.workoutHistory.unshift(finished);
+    renderHome(); toast('Workout saved -- '+dur+' min');
+  } catch(e) {
+    toast('Failed to save: ' + e.message, true);
+  }
 }
 
 function discardWorkout() {
-  clearInterval(timerInterval); state.currentWorkout=null; saveState();
+  clearInterval(timerInterval); state.currentWorkout=null;
   document.getElementById('finish-confirm').style.display='none';
   switchTab('home', document.querySelectorAll('nav button')[0]); toast('Workout discarded');
 }
@@ -968,7 +985,7 @@ function selectExercise(eid,ename) {
   if(!state.currentWorkout) return;
   if(state.currentWorkout.exercises.find(e=>e.exerciseId===eid)){closeOverlay('exercise-picker');toast('Already added');return;}
   state.currentWorkout.exercises.push({exerciseId:eid,exerciseName:ename,sets:[]});
-  saveState();closeOverlay('exercise-picker');renderWorkout();
+  closeOverlay('exercise-picker');renderWorkout();
 }
 function showAddCustomExercise() {
   closeOverlay('exercise-picker');document.getElementById('custom-ex-name').value='';
@@ -979,9 +996,9 @@ function addCustomExercise() {
   const group=document.getElementById('custom-ex-group').value;
   if(!name){toast('Enter a name');return;}
   const id='ex_'+Date.now().toString(36);
-  state.exercises.push({id,name,muscleGroup:group});saveState();
+  state.exercises.push({id,name,muscleGroup:group});
   closeOverlay('custom-exercise-overlay');
-  if(state.currentWorkout){state.currentWorkout.exercises.push({exerciseId:id,exerciseName:name,sets:[]});saveState();renderWorkout();}
+  if(state.currentWorkout){state.currentWorkout.exercises.push({exerciseId:id,exerciseName:name,sets:[]});renderWorkout();}
   toast(name+' added');
 }
 
@@ -1022,15 +1039,14 @@ function renderWorkout() {
 
 function addSet(xi,pw,pr) {
   const s={id:'set_'+Date.now().toString(36),weight:pw||0,reps:pr||0,effort:''};
-  state.currentWorkout.exercises[xi].sets.push(s);saveState();renderWorkout();
+  state.currentWorkout.exercises[xi].sets.push(s);renderWorkout();
 }
 function updateSet(xi,si,field,val) {
   if(field==='effort') state.currentWorkout.exercises[xi].sets[si][field]=val;
   else state.currentWorkout.exercises[xi].sets[si][field]=parseFloat(val)||0;
-  saveState();
 }
-function removeSet(xi,si){state.currentWorkout.exercises[xi].sets.splice(si,1);saveState();renderWorkout();}
-function removeExercise(xi){state.currentWorkout.exercises.splice(xi,1);saveState();renderWorkout();}
+function removeSet(xi,si){state.currentWorkout.exercises[xi].sets.splice(si,1);renderWorkout();}
+function removeExercise(xi){state.currentWorkout.exercises.splice(xi,1);renderWorkout();}
 
 // ============================================
 // HISTORY
@@ -1086,11 +1102,16 @@ async function logWeightEntry() {
   const val = parseFloat(inp.value);
   if (!val || val <= 0) { toast('Enter a valid weight'); return; }
   const entry = { id:'wt_'+Date.now().toString(36), date:new Date().toISOString(), weight:val, unit:settings.weightUnit };
-  state.weightLog.unshift(entry);
-  saveState(); inp.value = '';
-  renderWeight();
+  inp.value = '';
 
-  try { await syncWeightToSheets(entry); } catch(e) { console.error('Sheets sync:', e); }
+  try {
+    await syncWeightToSheets(entry);
+    state.weightLog.unshift(entry);
+    renderWeight();
+    toast('Weight logged');
+  } catch(e) {
+    toast('Failed to save: ' + e.message, true);
+  }
 }
 
 function renderWeight() {
@@ -1268,27 +1289,9 @@ async function sendChat() {
 // SETTINGS
 // ============================================
 
-function updateModeLabel() {
-  const l = document.getElementById('mode-label');
-  const d = document.getElementById('mode-detail');
-  if (gtoken && settings.spreadsheetId) {
-    l.textContent = 'synced to Google Sheets';
-    d.textContent = '';
-  } else {
-    l.textContent = 'local mode';
-    d.textContent = 'Sign in with Google to sync.';
-  }
-}
-
 function exportData() {
-  const b = new Blob([JSON.stringify({exercises:state.exercises,presets:state.presets,weekPlan:state.weekPlan,workoutHistory:state.workoutHistory,weightLog:state.weightLog},null,2)],{type:'application/json'});
+  const b = new Blob([JSON.stringify({workoutHistory:state.workoutHistory,weightLog:state.weightLog},null,2)],{type:'application/json'});
   const a = document.createElement('a'); a.href=URL.createObjectURL(b); a.download='ironlog-'+new Date().toISOString().slice(0,10)+'.json'; a.click(); toast('Exported');
-}
-
-let clearPending = false;
-function confirmClearData() {
-  if (!clearPending) { clearPending=true; toast('Tap again to confirm'); setTimeout(()=>{clearPending=false;},3000); return; }
-  clearPending=false; state.workoutHistory=[]; state.currentWorkout=null; state.weightLog=[]; saveState(); renderHome(); renderHistory(); renderWeight(); toast('Cleared');
 }
 
 // ============================================
