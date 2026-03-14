@@ -551,7 +551,10 @@ function dbSet(key, val) {
   });
 }
 
-let settings = { anthropicKey: '', anthropicModel: 'claude-haiku-4-5-20251001', weightUnit: 'kg', spreadsheetId: '', googleClientId: '' };
+let settings = { anthropicKey: '', anthropicModel: 'claude-haiku-4-5-20251001', weightUnit: 'kg', spreadsheetId: '' };
+
+// Hardcode your Google OAuth Client ID here (not a secret -- it's a public identifier)
+const GOOGLE_CLIENT_ID = '';
 
 async function loadSettings() {
   await openSettingsDb();
@@ -579,31 +582,23 @@ let tokenClient = null;
 
 function renderGate() {
   const gc = document.getElementById('gate-content');
-  const clientId = settings.googleClientId;
-  if (!clientId) {
-    gc.innerHTML = '<div class="input-group" style="text-align:left;width:100%;max-width:320px;"><div class="input-label">Google OAuth Client ID</div><input type="text" id="gate-client-id" placeholder="xxxx.apps.googleusercontent.com" style="font-size:13px;"></div><button class="signin-btn" onclick="saveClientIdAndInit()">Save & Continue</button><p class="setup-hint mt-12">Create one at console.cloud.google.com > APIs & Services > Credentials > OAuth 2.0 Client ID (Web application). Add this site as an authorized JS origin.</p>';
+  if (!GOOGLE_CLIENT_ID) {
+    gc.innerHTML = '<p class="subtitle" style="color:var(--red);">App not configured. Developer needs to set GOOGLE_CLIENT_ID in index.html.</p>';
     return;
   }
   if (typeof google === 'undefined') {
-    gc.innerHTML = '<p class="subtitle">Loading Google services...</p>';
+    gc.innerHTML = '<p class="subtitle">Loading...</p>';
     setTimeout(renderGate, 500);
     return;
   }
   if (!tokenClient) {
     tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
+      client_id: GOOGLE_CLIENT_ID,
       scope: SHEETS_SCOPE,
       callback: onGoogleToken,
     });
   }
   gc.innerHTML = '<button class="signin-btn" onclick="googleSignIn()"><svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.01 24.01 0 0 0 0 21.56l7.98-6.19z"/><path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Sign in with Google</button>';
-}
-
-async function saveClientIdAndInit() {
-  const v = document.getElementById('gate-client-id').value.trim();
-  if (!v) return;
-  await saveSetting('googleClientId', v);
-  renderGate();
 }
 
 function googleSignIn() {
