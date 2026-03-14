@@ -9,6 +9,7 @@
 <title>Iron Log</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -248,10 +249,10 @@
   <div id="screen-settings" class="screen">
     <h1 class="mb-20">Settings</h1>
     <div class="settings-section">
-      <h3>Backend Connection</h3>
-      <div class="input-group"><div class="input-label">Apps Script URL</div><input type="url" id="api-url" placeholder="https://script.google.com/macros/s/..." oninput="saveSetting('apiUrl',this.value.trim())"></div>
-      <button class="btn btn-secondary btn-sm" onclick="testConnection()">Test Connection</button>
-      <div id="connection-status"></div>
+      <h3>Google Sheets Sync</h3>
+      <p class="small dim mb-12">Sign in with Google to sync workouts and weight to a spreadsheet.</p>
+      <div id="google-auth-area"></div>
+      <div id="sheets-status" class="mt-8"></div>
     </div>
     <div class="settings-section">
       <h3>AI Coach (Anthropic)</h3>
@@ -264,7 +265,7 @@
     </div>
     <div class="settings-section">
       <h3>Data</h3>
-      <p class="small dim mb-12">Running in <strong id="mode-label">demo mode</strong>.</p>
+      <p class="small dim mb-12">Running in <strong id="mode-label">local mode</strong>. <span id="mode-detail"></span></p>
       <button class="btn btn-secondary btn-sm btn-full mb-8" onclick="exportData()">Export Data (JSON)</button>
       <button class="btn btn-danger btn-sm btn-full" onclick="confirmClearData()">Clear Local Data</button>
     </div>
@@ -536,7 +537,7 @@ function dbSet(key, val) {
 }
 
 // Settings cache (loaded from IDB at init)
-let settings = { apiUrl: '', anthropicKey: '', anthropicModel: 'claude-haiku-4-5-20251001', weightUnit: 'kg' };
+let settings = { anthropicKey: '', anthropicModel: 'claude-haiku-4-5-20251001', weightUnit: 'kg', spreadsheetId: '' };
 
 async function loadSettings() {
   await openSettingsDb();
@@ -544,19 +545,152 @@ async function loadSettings() {
     const v = await dbGet(k);
     if (v !== undefined) settings[k] = v;
   }
-  // Migrate old localStorage apiUrl if present
-  const oldUrl = localStorage.getItem('ironlog_api_url');
-  if (oldUrl && !settings.apiUrl) {
-    settings.apiUrl = oldUrl;
-    await dbSet('apiUrl', oldUrl);
-    localStorage.removeItem('ironlog_api_url');
-  }
 }
 
 async function saveSetting(key, val) {
   settings[key] = val;
   await dbSet(key, val);
-  if (key === 'apiUrl') updateModeLabel();
+}
+
+// ============================================
+// GOOGLE IDENTITY SERVICES + SHEETS API
+// ============================================
+
+const GOOGLE_CLIENT_ID = ''; // Set via Settings or build config
+const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
+const SPREADSHEET_TITLE = 'Iron Log Data';
+
+let gtoken = null; // Google access token
+let tokenClient = null;
+
+function initGoogleAuth() {
+  const clientId = settings.googleClientId || GOOGLE_CLIENT_ID;
+  if (!clientId || typeof google === 'undefined') {
+    renderGoogleAuthArea();
+    return;
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: SHEETS_SCOPE,
+    callback: onGoogleToken,
+  });
+  renderGoogleAuthArea();
+}
+
+function onGoogleToken(resp) {
+  if (resp.error) {
+    toast('Google auth failed: ' + resp.error, true);
+    return;
+  }
+  gtoken = resp.access_token;
+  toast('Signed in to Google');
+  updateModeLabel();
+  renderGoogleAuthArea();
+  ensureSpreadsheet();
+}
+
+function googleSignIn() {
+  if (!tokenClient) {
+    toast('Set Google Client ID in settings first');
+    return;
+  }
+  tokenClient.requestAccessToken({ prompt: '' });
+}
+
+function googleSignOut() {
+  if (gtoken) google.accounts.oauth2.revoke(gtoken);
+  gtoken = null;
+  updateModeLabel();
+  renderGoogleAuthArea();
+  toast('Signed out');
+}
+
+function renderGoogleAuthArea() {
+  const area = document.getElementById('google-auth-area');
+  const clientId = settings.googleClientId || GOOGLE_CLIENT_ID;
+  let h = '';
+  if (!clientId) {
+    h += '<div class="input-group"><div class="input-label">Google OAuth Client ID</div><input type="text" id="google-client-id" placeholder="xxxx.apps.googleusercontent.com" oninput="saveSetting(\'googleClientId\',this.value.trim());initGoogleAuth()"></div>';
+    h += '<p class="small dim">Create one at console.cloud.google.com > APIs & Services > Credentials</p>';
+  } else if (gtoken) {
+    h += '<button class="btn btn-secondary btn-sm btn-full" onclick="googleSignOut()">Sign out of Google</button>';
+  } else {
+    h += '<button class="btn btn-primary btn-sm btn-full" onclick="googleSignIn()">Sign in with Google</button>';
+  }
+  area.innerHTML = h;
+  if (!clientId) {
+    const inp = document.getElementById('google-client-id');
+    if (inp && settings.googleClientId) inp.value = settings.googleClientId;
+  }
+}
+
+async function sheetsApi(path, method, body) {
+  if (!gtoken) return null;
+  const opts = { method: method || 'GET', headers: { 'Authorization': 'Bearer ' + gtoken } };
+  if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  const resp = await fetch(SHEETS_BASE + path, opts);
+  if (resp.status === 401) { gtoken = null; updateModeLabel(); renderGoogleAuthArea(); toast('Google session expired, sign in again', true); return null; }
+  return await resp.json();
+}
+
+async function ensureSpreadsheet() {
+  if (settings.spreadsheetId) {
+    const check = await sheetsApi('/' + settings.spreadsheetId + '?fields=spreadsheetId');
+    if (check && check.spreadsheetId) { updateSheetsStatus('Connected: ' + settings.spreadsheetId.substring(0,8) + '...'); return; }
+  }
+  // Create new spreadsheet
+  const resp = await sheetsApi('', 'POST', {
+    properties: { title: SPREADSHEET_TITLE },
+    sheets: [
+      { properties: { title: 'Workouts' } },
+      { properties: { title: 'Sets' } },
+      { properties: { title: 'Weight' } },
+    ]
+  });
+  if (resp && resp.spreadsheetId) {
+    await saveSetting('spreadsheetId', resp.spreadsheetId);
+    // Write headers
+    await sheetsApi('/' + resp.spreadsheetId + '/values/Workouts!A1:F1?valueInputOption=RAW', 'PUT',
+      { values: [['id','date','presetName','durationMinutes','notes','createdAt']] });
+    await sheetsApi('/' + resp.spreadsheetId + '/values/Sets!A1:I1?valueInputOption=RAW', 'PUT',
+      { values: [['id','workoutId','exerciseId','exerciseName','setNumber','weight','reps','effort','timestamp']] });
+    await sheetsApi('/' + resp.spreadsheetId + '/values/Weight!A1:F1?valueInputOption=RAW', 'PUT',
+      { values: [['id','date','weight','unit','notes','createdAt']] });
+    updateSheetsStatus('Created new spreadsheet');
+    toast('Spreadsheet created in your Drive');
+  } else {
+    updateSheetsStatus('Failed to create spreadsheet');
+  }
+}
+
+function updateSheetsStatus(msg) {
+  const el = document.getElementById('sheets-status');
+  if (el) el.innerHTML = '<div class="connection-status status-connected"><span class="status-dot"></span> ' + msg + '</div>';
+}
+
+async function syncWorkoutToSheets(workout) {
+  if (!gtoken || !settings.spreadsheetId) return;
+  const sid = settings.spreadsheetId;
+  // Append workout row
+  await sheetsApi('/' + sid + '/values/Workouts!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST',
+    { values: [[workout.id, workout.date, workout.presetName||'', workout.durationMinutes||0, '', new Date().toISOString()]] });
+  // Append all sets
+  const setRows = [];
+  workout.exercises.forEach(ex => {
+    ex.sets.forEach((s, si) => {
+      setRows.push([s.id||workout.id+'_s'+si, workout.id, ex.exerciseId, ex.exerciseName, si+1, s.weight||0, s.reps||0, s.effort||'', new Date().toISOString()]);
+    });
+  });
+  if (setRows.length) {
+    await sheetsApi('/' + sid + '/values/Sets!A:I:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST', { values: setRows });
+  }
+}
+
+async function syncWeightToSheets(entry) {
+  if (!gtoken || !settings.spreadsheetId) return;
+  await sheetsApi('/' + settings.spreadsheetId + '/values/Weight!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST',
+    { values: [[entry.id, entry.date, entry.weight, entry.unit, '', new Date().toISOString()]] });
 }
 
 // ============================================
@@ -601,11 +735,13 @@ function saveState() {
 async function init() {
   await loadSettings();
   loadState();
-  document.getElementById('api-url').value = settings.apiUrl;
   document.getElementById('anthropic-key').value = settings.anthropicKey;
   document.getElementById('anthropic-model').value = settings.anthropicModel;
   document.getElementById('weight-unit-btn').textContent = settings.weightUnit;
   updateModeLabel();
+  // Init Google auth after GIS library loads
+  if (typeof google !== 'undefined') initGoogleAuth();
+  else window.addEventListener('load', () => setTimeout(initGoogleAuth, 500));
   if (state.currentWorkout) { switchTab('workout', document.querySelectorAll('nav button')[1]); renderWorkout(); startTimer(); }
   renderHome(); renderHistory(); renderWeight(); renderChat();
 }
@@ -788,10 +924,8 @@ async function finishWorkout() {
   switchTab('home', document.querySelectorAll('nav button')[0]);
   renderHome(); toast('Workout saved -- '+dur+' min');
 
-  // Batch sync to GDrive
-  const r = await apiCall('syncWorkout', finished, 'POST');
-  if (r && r.error) toast('Sync failed: ' + r.error, true);
-  else if (r && r.ok) toast('Synced to GDrive');
+  // Sync to Google Sheets
+  try { await syncWorkoutToSheets(finished); } catch(e) { console.error('Sheets sync:', e); }
 }
 
 function discardWorkout() {
@@ -846,7 +980,6 @@ function addCustomExercise() {
   if(!name){toast('Enter a name');return;}
   const id='ex_'+Date.now().toString(36);
   state.exercises.push({id,name,muscleGroup:group});saveState();
-  apiCall('addExercise',{id,name,muscleGroup:group},'POST');
   closeOverlay('custom-exercise-overlay');
   if(state.currentWorkout){state.currentWorkout.exercises.push({exerciseId:id,exerciseName:name,sets:[]});saveState();renderWorkout();}
   toast(name+' added');
@@ -957,8 +1090,7 @@ async function logWeightEntry() {
   saveState(); inp.value = '';
   renderWeight();
 
-  const r = await apiCall('logWeight', entry, 'POST');
-  if (r && r.error) toast('Sync failed: ' + r.error, true);
+  try { await syncWeightToSheets(entry); } catch(e) { console.error('Sheets sync:', e); }
 }
 
 function renderWeight() {
@@ -1047,12 +1179,11 @@ function renderWeightHistory() {
 
 let chatMessages = [];
 
+// Worker URL for Anthropic proxy (auto-deployed via GitHub Actions)
+const WORKER_URL = 'https://ironlog-api.vgainullin.workers.dev';
+
 function renderChat() {
   const area = document.getElementById('chat-area');
-  if (!settings.apiUrl) {
-    area.innerHTML = '<div class="chat-no-key"><p>Connect your Apps Script backend in Settings to enable the AI coach.</p><button class="btn btn-secondary btn-sm" onclick="switchTab(\'settings\', document.querySelectorAll(\'nav button\')[5])">Go to Settings</button></div>';
-    return;
-  }
   if (!settings.anthropicKey) {
     area.innerHTML = '<div class="chat-no-key"><p>Add your Anthropic API key in Settings to chat with the AI coach.</p><button class="btn btn-secondary btn-sm" onclick="switchTab(\'settings\', document.querySelectorAll(\'nav button\')[5])">Go to Settings</button></div>';
     return;
@@ -1102,21 +1233,33 @@ async function sendChat() {
 
   const apiMessages = chatMessages.filter(m => m.role !== 'error').map(m => ({ role: m.role, content: m.content }));
 
-  const r = await apiCall('chat', {
-    apiKey: settings.anthropicKey,
-    model: settings.anthropicModel,
-    messages: apiMessages,
-  }, 'POST');
-
-  btn.disabled = false;
-  btn.textContent = 'Send';
-
-  if (r && r.ok && r.content && r.content.length) {
-    const reply = r.content.map(b => b.text).join('');
-    chatMessages.push({ role: 'assistant', content: reply });
-  } else {
-    const errMsg = (r && r.error) ? r.error : 'Failed to reach AI. Check your API key and backend connection.';
-    chatMessages.push({ role: 'error', content: errMsg });
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': settings.anthropicKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: settings.anthropicModel || 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: 'You are a concise, knowledgeable fitness coach inside a gym tracking app called Iron Log. Give brief, actionable advice about exercises, form, programming, nutrition, and recovery. Keep responses short (2-4 sentences) unless the user asks for detail.',
+        messages: apiMessages,
+      }),
+    });
+    const r = await resp.json();
+    btn.disabled = false;
+    btn.textContent = 'Send';
+    if (r.content && r.content.length) {
+      chatMessages.push({ role: 'assistant', content: r.content.map(b => b.text).join('') });
+    } else {
+      chatMessages.push({ role: 'error', content: r.error ? (r.error.message || r.error) : 'Unknown error' });
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Send';
+    chatMessages.push({ role: 'error', content: 'Network error: ' + e.message });
   }
   renderChat();
 }
@@ -1127,19 +1270,14 @@ async function sendChat() {
 
 function updateModeLabel() {
   const l = document.getElementById('mode-label');
-  const s = document.getElementById('connection-status');
-  if (settings.apiUrl) { l.textContent = 'connected mode'; s.innerHTML = ''; }
-  else { l.textContent = 'demo mode'; s.innerHTML = '<div class="connection-status status-demo"><span class="status-dot"></span> Running locally</div>'; }
-}
-
-async function testConnection() {
-  if (!settings.apiUrl) { toast('Enter a URL first'); return; }
-  const s = document.getElementById('connection-status');
-  s.innerHTML = '<div class="connection-status" style="background:var(--bg-2);color:var(--text-dim)">Testing...</div>';
-  const r = await apiCall('ping');
-  s.innerHTML = r && r.ok
-    ? '<div class="connection-status status-connected"><span class="status-dot"></span> Connected</div>'
-    : '<div class="connection-status status-disconnected"><span class="status-dot"></span> Failed' + (r && r.error ? ': '+r.error : '') + '</div>';
+  const d = document.getElementById('mode-detail');
+  if (gtoken && settings.spreadsheetId) {
+    l.textContent = 'synced to Google Sheets';
+    d.textContent = '';
+  } else {
+    l.textContent = 'local mode';
+    d.textContent = 'Sign in with Google to sync.';
+  }
 }
 
 function exportData() {
@@ -1151,30 +1289,6 @@ let clearPending = false;
 function confirmClearData() {
   if (!clearPending) { clearPending=true; toast('Tap again to confirm'); setTimeout(()=>{clearPending=false;},3000); return; }
   clearPending=false; state.workoutHistory=[]; state.currentWorkout=null; state.weightLog=[]; saveState(); renderHome(); renderHistory(); renderWeight(); toast('Cleared');
-}
-
-// ============================================
-// API (GDrive sync via Apps Script)
-// ============================================
-
-async function apiCall(action, data, method) {
-  method = method || 'GET';
-  if (!settings.apiUrl) return null;
-  try {
-    const url = new URL(settings.apiUrl);
-    url.searchParams.set('action', action);
-    if (method === 'GET' && data) Object.entries(data).forEach(([k,v]) => url.searchParams.set(k, v));
-    const opts = { method, redirect: 'follow' };
-    if (method === 'POST') {
-      opts.headers = { 'Content-Type': 'text/plain' };
-      opts.body = JSON.stringify(data);
-    }
-    const resp = await fetch(url.toString(), opts);
-    return await resp.json();
-  } catch (e) {
-    console.error('API error:', e);
-    return { error: e.message };
-  }
 }
 
 // ============================================

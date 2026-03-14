@@ -1,15 +1,20 @@
 # Setup
 
 ## Frontend (automatic)
-Deployed to GitHub Pages on every push to main. No config needed beyond:
-- Repo Settings > Pages > Source: GitHub Actions
+Deployed to GitHub Pages on every push to main.
+One-time: Repo Settings > Pages > Source: GitHub Actions
 
-## Backend (optional, 4 steps)
-Only needed if you want GDrive sync / AI coach.
+## AI Coach proxy (automatic)
+Cloudflare Worker deploys on push to main.
+One-time: add these to GitHub repo settings:
+- Secret: `CLOUDFLARE_API_TOKEN` (create at dash.cloudflare.com > API Tokens > Create Token > Edit Workers)
+- Variable: `CLOUDFLARE_ACCOUNT_ID` (visible on your CF dashboard)
 
-1. Go to script.google.com > New project
-2. Paste the contents of `apps-script/Code.js`
-3. Run the `setup` function (creates the spreadsheet and sheets)
-4. Deploy > New deployment > Web app > Anyone > Deploy
+## Google Sheets sync (optional, one-time)
+1. Go to console.cloud.google.com > create project (or use existing)
+2. Enable Google Sheets API
+3. APIs & Services > Credentials > Create OAuth Client ID > Web application
+4. Add authorized JS origins: `https://vgainullin.github.io` and `http://localhost:8080`
+5. Copy the Client ID into the app's Settings tab
 
-Copy the URL into the app's Settings tab. Done.
+Users sign in with Google in the app. A spreadsheet is auto-created in their Drive.
