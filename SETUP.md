@@ -1,18 +1,15 @@
-# One-time clickops setup
+# Setup
 
-## GitHub Pages
-1. Repo Settings > Pages > Source: GitHub Actions
+## Frontend (automatic)
+Deployed to GitHub Pages on every push to main. No config needed beyond:
+- Repo Settings > Pages > Source: GitHub Actions
 
-## Apps Script (optional, for GDrive sync)
-1. Create a Google Cloud project at console.cloud.google.com
-2. Enable the Apps Script API
-3. Run `npx clasp login` locally, copy the token from `~/.clasprc.json`
-4. Run `npx clasp create --type webapp --rootDir apps-script` to create the script
-5. Run the `setup` function once in the Apps Script editor (creates sheets)
-6. Deploy as Web App in the Apps Script editor to get the initial URL
+## Backend (optional, 4 steps)
+Only needed if you want GDrive sync / AI coach.
 
-## GitHub repo config
-- Secret `CLASP_TOKEN`: paste the full JSON token object from `~/.clasprc.json`
-- Variable `SCRIPT_ID`: the Apps Script project ID (from `.clasp.json` after create)
+1. Go to script.google.com > New project
+2. Paste the contents of `apps-script/Code.js`
+3. Run the `setup` function (creates the spreadsheet and sheets)
+4. Deploy > New deployment > Web app > Anyone > Deploy
 
-After this, every push to main auto-deploys both frontend and Apps Script.
+Copy the URL into the app's Settings tab. Done.

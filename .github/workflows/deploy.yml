@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy-frontend:
+  deploy:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -28,18 +28,3 @@ jobs:
           path: public
       - id: deployment
         uses: actions/deploy-pages@v4
-
-  deploy-apps-script:
-    runs-on: ubuntu-latest
-    if: vars.SCRIPT_ID != ''
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm ci
-      - name: Write clasp credentials
-        run: |
-          echo '{"token":${{ toJSON(secrets.CLASP_TOKEN) }}}' > ~/.clasprc.json
-          echo '{"scriptId":"${{ vars.SCRIPT_ID }}","rootDir":"apps-script"}' > .clasp.json
-      - run: npx clasp push --force
