@@ -1,0 +1,7 @@
+{
+  "name": "iron-log",
+  "private": true,
+  "devDependencies": {
+    "@google/clasp": "^2.4.2"
+  }
+}
