@@ -269,6 +269,8 @@
     <div class="settings-section">
       <h3>Account</h3>
       <p class="small dim mb-12">Signed in. Data saved to Google Sheets.</p>
+      <button class="btn btn-secondary btn-sm btn-full mb-8" onclick="enableCliAccess()">Enable CLI Access</button>
+      <div id="cli-status"></div>
       <button class="btn btn-secondary btn-sm btn-full" onclick="googleSignOut()">Sign out</button>
     </div>
     <div class="settings-section">
@@ -729,6 +731,28 @@ async function syncWorkoutToSheets(workout) {
 async function syncWeightToSheets(entry) {
   await sheetsApi('/' + settings.spreadsheetId + '/values/Weight!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST',
     { values: [[entry.id, entry.date, entry.weight, entry.unit, '', new Date().toISOString()]] });
+}
+
+// ---- CLI / Service Account Access ----
+const SERVICE_ACCOUNT_EMAIL = 'fitness-service@fitness-tracker-490214.iam.gserviceaccount.com';
+
+async function enableCliAccess() {
+  if (!gtoken || !settings.spreadsheetId) { toast('Not signed in', true); return; }
+  const el = document.getElementById('cli-status');
+  el.innerHTML = '<p class="small dim">Sharing spreadsheet with service account...</p>';
+  try {
+    const resp = await fetch(
+      'https://www.googleapis.com/drive/v3/files/' + settings.spreadsheetId + '/permissions',
+      { method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + gtoken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'writer', type: 'user', emailAddress: SERVICE_ACCOUNT_EMAIL })
+      });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+    el.innerHTML = '<p class="small" style="color:var(--green)">CLI access enabled. Run scripts/pull.py to fetch data.</p>';
+  } catch(e) {
+    el.innerHTML = '<p class="small" style="color:var(--red)">Failed: ' + e.message + '</p>';
+  }
 }
 
 // ============================================
