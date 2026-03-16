@@ -343,58 +343,70 @@
 const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const DAY_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
-const DEFAULT_EXERCISES = [
-  { id:"ex_001", name:"Barbell Bench Press", muscleGroup:"Chest" },
-  { id:"ex_002", name:"Incline Dumbbell Press", muscleGroup:"Chest" },
-  { id:"ex_003", name:"Cable Flyes", muscleGroup:"Chest" },
-  { id:"ex_023", name:"Dumbbell Bench Press", muscleGroup:"Chest" },
-  { id:"ex_004", name:"Barbell Back Squat", muscleGroup:"Legs" },
-  { id:"ex_005", name:"Romanian Deadlift", muscleGroup:"Legs" },
-  { id:"ex_006", name:"Leg Press", muscleGroup:"Legs" },
-  { id:"ex_007", name:"Leg Curl", muscleGroup:"Legs" },
-  { id:"ex_008", name:"Leg Extension", muscleGroup:"Legs" },
-  { id:"ex_024", name:"Bulgarian Split Squat", muscleGroup:"Legs" },
-  { id:"ex_025", name:"Hip Thrust", muscleGroup:"Legs" },
-  { id:"ex_020", name:"Calf Raises", muscleGroup:"Legs" },
-  { id:"ex_009", name:"Barbell Overhead Press", muscleGroup:"Shoulders" },
-  { id:"ex_010", name:"Lateral Raises", muscleGroup:"Shoulders" },
-  { id:"ex_011", name:"Face Pulls", muscleGroup:"Shoulders" },
-  { id:"ex_012", name:"Barbell Row", muscleGroup:"Back" },
-  { id:"ex_013", name:"Pull Ups", muscleGroup:"Back" },
-  { id:"ex_014", name:"Lat Pulldown", muscleGroup:"Back" },
-  { id:"ex_015", name:"Seated Cable Row", muscleGroup:"Back" },
-  { id:"ex_019", name:"Conventional Deadlift", muscleGroup:"Back" },
-  { id:"ex_016", name:"Barbell Curl", muscleGroup:"Arms" },
-  { id:"ex_017", name:"Tricep Pushdown", muscleGroup:"Arms" },
-  { id:"ex_018", name:"Hammer Curl", muscleGroup:"Arms" },
-  { id:"ex_021", name:"Plank", muscleGroup:"Core" },
-  { id:"ex_022", name:"Cable Crunch", muscleGroup:"Core" },
-];
+// Exercise database loaded from exercises.json at init
+let exerciseDb = { categories: [], equipment: [], exercises: [] };
+let exerciseIndex = {}; // name -> exercise lookup
+
+// Map granular muscle names to display groups
+const MUSCLE_GROUP_MAP = {
+  chest:'Chest', abs:'Core', 'lower back':'Core', lats:'Back', 'middle back':'Back',
+  traps:'Back', biceps:'Arms', triceps:'Arms', brachialis:'Arms', forearms:'Arms',
+  quads:'Legs', hamstrings:'Legs', glutes:'Legs', calves:'Legs', abductors:'Legs',
+  adductors:'Legs', shoulders:'Shoulders', neck:'Shoulders',
+};
+
+function muscleToGroup(m) { return MUSCLE_GROUP_MAP[m] || 'Other'; }
+
+function getExerciseMuscleGroup(ex) {
+  if (ex.primary_muscles && ex.primary_muscles.length) return muscleToGroup(ex.primary_muscles[0]);
+  return 'Other';
+}
+
+function getExerciseTip(name) {
+  const ex = exerciseIndex[name.toLowerCase()];
+  if (!ex || !ex.instructions || !ex.instructions.length) return '';
+  return ex.instructions.join(' ');
+}
+
+async function loadExerciseDb() {
+  const resp = await fetch('exercises.json');
+  exerciseDb = await resp.json();
+  exerciseDb.exercises.forEach(ex => { exerciseIndex[ex.name.toLowerCase()] = ex; });
+  // Build state.exercises from DB
+  state.exercises = exerciseDb.exercises.map(ex => ({
+    id: 'ex_' + ex.name.toLowerCase().replace(/[^a-z0-9]/g,'_').substring(0,30),
+    name: ex.name,
+    muscleGroup: getExerciseMuscleGroup(ex),
+    category: ex.category,
+    equipment: ex.equipment,
+    primary_muscles: ex.primary_muscles,
+  }));
+}
 
 const DEFAULT_PRESETS = [
   { id:'preset_push', name:'Push', color:'push', exercises:[
-    { exerciseId:'ex_001', exerciseName:'Barbell Bench Press', defaultSets:3 },
-    { exerciseId:'ex_002', exerciseName:'Incline Dumbbell Press', defaultSets:3 },
-    { exerciseId:'ex_009', exerciseName:'Barbell Overhead Press', defaultSets:3 },
-    { exerciseId:'ex_010', exerciseName:'Lateral Raises', defaultSets:3 },
-    { exerciseId:'ex_003', exerciseName:'Cable Flyes', defaultSets:3 },
-    { exerciseId:'ex_017', exerciseName:'Tricep Pushdown', defaultSets:3 },
+    { exerciseName:'Barbell Bench Press - Medium Grip', defaultSets:3 },
+    { exerciseName:'Incline Dumbbell Press', defaultSets:3 },
+    { exerciseName:'Standing Military Press', defaultSets:3 },
+    { exerciseName:'Side Lateral Raise', defaultSets:3 },
+    { exerciseName:'Cable Crossover', defaultSets:3 },
+    { exerciseName:'Triceps Pushdown', defaultSets:3 },
   ]},
   { id:'preset_pull', name:'Pull', color:'pull', exercises:[
-    { exerciseId:'ex_012', exerciseName:'Barbell Row', defaultSets:3 },
-    { exerciseId:'ex_014', exerciseName:'Lat Pulldown', defaultSets:3 },
-    { exerciseId:'ex_015', exerciseName:'Seated Cable Row', defaultSets:3 },
-    { exerciseId:'ex_011', exerciseName:'Face Pulls', defaultSets:3 },
-    { exerciseId:'ex_016', exerciseName:'Barbell Curl', defaultSets:3 },
-    { exerciseId:'ex_018', exerciseName:'Hammer Curl', defaultSets:3 },
+    { exerciseName:'Bent Over Barbell Row', defaultSets:3 },
+    { exerciseName:'Wide-Grip Lat Pulldown', defaultSets:3 },
+    { exerciseName:'Seated Cable Rows', defaultSets:3 },
+    { exerciseName:'Face Pull', defaultSets:3 },
+    { exerciseName:'Barbell Curl', defaultSets:3 },
+    { exerciseName:'Hammer Curls', defaultSets:3 },
   ]},
   { id:'preset_legs', name:'Legs', color:'legs', exercises:[
-    { exerciseId:'ex_004', exerciseName:'Barbell Back Squat', defaultSets:3 },
-    { exerciseId:'ex_005', exerciseName:'Romanian Deadlift', defaultSets:3 },
-    { exerciseId:'ex_006', exerciseName:'Leg Press', defaultSets:3 },
-    { exerciseId:'ex_007', exerciseName:'Leg Curl', defaultSets:3 },
-    { exerciseId:'ex_008', exerciseName:'Leg Extension', defaultSets:3 },
-    { exerciseId:'ex_020', exerciseName:'Calf Raises', defaultSets:3 },
+    { exerciseName:'Barbell Squat', defaultSets:3 },
+    { exerciseName:'Romanian Deadlift', defaultSets:3 },
+    { exerciseName:'Leg Press', defaultSets:3 },
+    { exerciseName:'Lying Leg Curls', defaultSets:3 },
+    { exerciseName:'Leg Extensions', defaultSets:3 },
+    { exerciseName:'Standing Calf Raises', defaultSets:3 },
   ]},
 ];
 
@@ -485,35 +497,6 @@ function pixelArtSVG(group, size) {
   }
   return '<svg viewBox="0 0 8 8" width="'+size+'" height="'+size+'" class="pixel-icon" style="image-rendering:pixelated">'+rects+'</svg>';
 }
-
-// ---- EXERCISE TIPS ----
-const EXERCISE_TIPS = {
-  "ex_001": "Retract shoulder blades and arch upper back slightly. Drive feet into floor. Bar path should angle from mid-chest toward lockout over shoulders.",
-  "ex_002": "Set bench to 30-45 degrees. Keep elbows at roughly 45 degrees from torso. Control the descent, squeeze at the top.",
-  "ex_003": "Set cables at shoulder height. Slight bend in elbows throughout. Focus on the stretch at full extension and squeeze at center.",
-  "ex_023": "Same setup as barbell bench but allows greater range of motion. Keep wrists neutral, touch dumbbells lightly at top.",
-  "ex_004": "Brace core before descent. Sit back and down, keeping knees tracking over toes. Hit parallel or below. Drive up through mid-foot.",
-  "ex_005": "Hinge at hips, slight knee bend. Bar stays close to legs. Feel the stretch in hamstrings. Squeeze glutes at lockout.",
-  "ex_006": "Place feet shoulder-width on platform. Lower until knees hit 90 degrees. Don't let lower back round off the pad.",
-  "ex_007": "Adjust pad to sit just above ankles. Curl with control, squeeze hamstrings at peak. Slow eccentric.",
-  "ex_008": "Sit firmly against backrest. Extend legs fully, pause at top. Control the descent -- don't let the weight drop.",
-  "ex_024": "Rear foot elevated on bench. Keep torso upright. Front knee tracks over toes. Most of the load on the front leg.",
-  "ex_025": "Upper back on bench, feet flat, knees at 90 degrees. Drive through heels, squeeze glutes hard at lockout.",
-  "ex_020": "Full range of motion: deep stretch at bottom, hard squeeze at top. Pause briefly at peak contraction.",
-  "ex_009": "Brace core, keep ribs down. Press straight up, moving head back slightly to clear the bar path. Lock out overhead.",
-  "ex_010": "Slight bend in elbows, raise to shoulder height. Lead with elbows, not hands. Control the negative.",
-  "ex_011": "Use rope attachment at face height. Pull toward face, spread rope ends apart. Squeeze rear delts at peak.",
-  "ex_012": "Hinge to about 45 degrees. Pull bar to lower chest. Squeeze shoulder blades together. Control the eccentric.",
-  "ex_013": "Dead hang start, pull until chin clears bar. Lead with elbows. Full extension at bottom each rep.",
-  "ex_014": "Lean back slightly, pull bar to upper chest. Squeeze lats at the bottom of the pull. Full stretch at top.",
-  "ex_015": "Sit upright, pull handle to lower sternum. Keep elbows close. Squeeze shoulder blades, stretch forward on return.",
-  "ex_019": "Set up with bar over mid-foot. Hips between squat and RDL position. Brace hard, push floor away. Lockout with glutes.",
-  "ex_016": "Keep elbows pinned at sides. Full extension at bottom, squeeze at top. Don't swing the weight.",
-  "ex_017": "Elbows locked at sides. Press down to full extension. Squeeze triceps, slow return. Don't lean forward excessively.",
-  "ex_018": "Neutral grip (palms facing each other). Same form as standard curl. Targets brachialis and forearms.",
-  "ex_021": "Elbows under shoulders, body in straight line. Squeeze glutes and brace abs. Don't let hips sag or pike up.",
-  "ex_022": "Kneel facing cable machine. Crunch downward by flexing abs, not pulling with arms. Hold the peak squeeze.",
-};
 
 // ============================================
 // INDEXEDDB SETTINGS STORE
@@ -760,7 +743,7 @@ async function enableCliAccess() {
 // ============================================
 
 let state = {
-  exercises: [...DEFAULT_EXERCISES],
+  exercises: [], // populated from exercises.json
   presets: [...DEFAULT_PRESETS],
   weekPlan: {0:null,1:'preset_push',2:null,3:'preset_pull',4:null,5:'preset_legs',6:null},
   currentWorkout: null,
@@ -778,6 +761,7 @@ function renderAll() {
 
 async function init() {
   await loadSettings();
+  await loadExerciseDb();
   renderGate();
 }
 
@@ -916,7 +900,8 @@ function startFromPreset(pid) {
   const exercises = p.exercises.map(e => {
     const sets = [];
     for (let i=0;i<e.defaultSets;i++) sets.push({id:'set_'+Date.now().toString(36)+'_'+i, weight:0, reps:0, effort:''});
-    return { exerciseId:e.exerciseId, exerciseName:e.exerciseName, sets };
+    const found = state.exercises.find(x => x.name === e.exerciseName);
+    return { exerciseId: found ? found.id : 'ex_'+Date.now().toString(36), exerciseName:e.exerciseName, sets };
   });
   state.currentWorkout = { id:'wk_'+Date.now().toString(36), startTime:Date.now(), exercises, presetName:p.name };
   switchTab('workout', document.querySelectorAll('nav button')[1]);
@@ -993,8 +978,8 @@ function renderExerciseList(exercises) {
   Object.keys(groups).sort().forEach(g=>{
     h+='<div class="exercise-group-label">'+pixelArtSVG(g, 14)+' '+g+'</div>';
     groups[g].forEach(e=>{
-      const tip = EXERCISE_TIPS[e.id];
-      const tipHtml = tip ? ' <span class="dim small" style="font-size:11px;">-- '+tip.substring(0,50)+'...</span>' : '';
+      const tip = getExerciseTip(e.name);
+      const tipHtml = tip ? ' <span class="dim small" style="font-size:11px;">-- '+tip.substring(0,60)+'...</span>' : '';
       h+='<div class="exercise-option" onclick="selectExercise(\''+e.id+'\',\''+e.name.replace(/'/g,"\\'")+ '\')">'+pixelArtSVG(e.muscleGroup, 20)+'<span class="ex-name">'+e.name+tipHtml+'</span></div>';
     });
   });
@@ -1030,7 +1015,7 @@ function renderWorkout() {
   if(!state.currentWorkout){c.innerHTML='<div class="empty-state"><p>No active workout</p><button class="btn btn-primary" onclick="startWorkout()">Start Workout</button></div>';return;}
   let h='';
   state.currentWorkout.exercises.forEach((ex,xi)=>{
-    const tip = EXERCISE_TIPS[ex.exerciseId];
+    const tip = getExerciseTip(ex.exerciseName);
     const mg = (state.exercises.find(e=>e.id===ex.exerciseId)||{}).muscleGroup||'Other';
     h+='<div class="exercise-block card mb-12"><div class="exercise-block-header">'+pixelArtSVG(mg,20)+'<h3 class="accent" style="margin-left:8px;">'+ex.exerciseName+'</h3><button class="btn-ghost" onclick="removeExercise('+xi+')" style="color:var(--text-faint);font-size:12px;">Remove</button></div>';
     if (tip) {
