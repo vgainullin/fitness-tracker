@@ -195,6 +195,61 @@
   #sign-in-gate .setup-hint { color: var(--text-faint); font-size: 12px; max-width: 300px; line-height: 1.5; }
   #sign-in-gate .setup-input { margin-top: 8px; }
   .loading-spinner { color: var(--text-dim); font-size: 14px; padding: 40px; text-align: center; }
+
+  /* PR overlay */
+  .pr-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 250; align-items: center; justify-content: center; flex-direction: column; }
+  .pr-overlay.open { display: flex; }
+  .pr-content { background: var(--bg-1); border: 2px solid var(--accent); border-radius: 16px; padding: 28px 24px; max-width: 380px; width: 90%; text-align: center; animation: slideUp 0.3s ease-out; }
+  .pr-title { font-size: 24px; font-weight: 700; color: var(--accent); margin-bottom: 16px; }
+  .pr-list { text-align: left; margin-bottom: 20px; }
+  .pr-item { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .pr-item .pr-exercise { font-weight: 600; color: var(--text); }
+  .pr-item .pr-improvement { color: var(--green); font-family: var(--mono); font-size: 13px; }
+
+  /* Loot box overlay */
+  .lootbox-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 260; align-items: center; justify-content: center; flex-direction: column; }
+  .lootbox-overlay.open { display: flex; }
+  .lootbox-content { text-align: center; max-width: 320px; width: 90%; }
+  .lootbox-box { width: 120px; height: 120px; margin: 0 auto 20px; background: var(--bg-2); border: 3px solid var(--accent); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 48px; cursor: pointer; }
+  .lootbox-box.shaking { animation: lootShake 0.6s ease-in-out; }
+  .lootbox-box.opening { animation: lootOpen 0.4s ease-out forwards; }
+  @keyframes lootShake { 0%,100%{transform:translateX(0) rotate(0)} 20%{transform:translateX(-8px) rotate(-3deg)} 40%{transform:translateX(8px) rotate(3deg)} 60%{transform:translateX(-6px) rotate(-2deg)} 80%{transform:translateX(6px) rotate(2deg)} }
+  @keyframes lootOpen { 0%{transform:scale(1);opacity:1} 50%{transform:scale(1.3);opacity:0.8} 100%{transform:scale(0);opacity:0} }
+  .loot-reveal { animation: lootReveal 0.4s ease-out; }
+  @keyframes lootReveal { 0%{transform:scale(0);opacity:0} 60%{transform:scale(1.2)} 100%{transform:scale(1);opacity:1} }
+  .loot-item-card { background: var(--bg-1); border-radius: 12px; padding: 20px; border: 2px solid var(--text-faint); }
+  .loot-item-card.common { border-color: #8a8580; }
+  .loot-item-card.uncommon { border-color: var(--green); box-shadow: 0 0 20px rgba(90,173,106,0.3); }
+  .loot-item-card.rare { border-color: var(--blue); box-shadow: 0 0 20px rgba(90,141,212,0.3); }
+  .loot-item-card.legendary { border-color: #ffd700; box-shadow: 0 0 30px rgba(255,215,0,0.4); }
+  .loot-rarity { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
+  .loot-rarity.common { color: #8a8580; }
+  .loot-rarity.uncommon { color: var(--green); }
+  .loot-rarity.rare { color: var(--blue); }
+  .loot-rarity.legendary { color: #ffd700; }
+  .loot-item-name { font-size: 18px; font-weight: 700; color: var(--text); margin-top: 4px; }
+  .loot-slot { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+  /* Inventory overlay */
+  .inventory-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: flex-end; justify-content: center; }
+  .inventory-overlay.open { display: flex; }
+  .inventory-sheet { background: var(--bg-1); border-radius: 20px 20px 0 0; width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; padding: 24px 16px; padding-bottom: calc(24px + var(--safe-bottom)); animation: slideUp 0.25s ease-out; }
+  .inventory-character { display: flex; justify-content: center; margin-bottom: 20px; }
+  .inventory-slots { margin-bottom: 16px; }
+  .inventory-slot-label { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; padding: 10px 0 6px; border-bottom: 1px solid var(--border); }
+  .inventory-items { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0; }
+  .inventory-item { width: 56px; height: 56px; background: var(--bg-2); border: 2px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; }
+  .inventory-item.equipped { border-color: var(--accent); background: rgba(232,168,76,0.1); }
+  .inventory-item.common { border-color: #8a8580; }
+  .inventory-item.uncommon { border-color: var(--green); }
+  .inventory-item.rare { border-color: var(--blue); }
+  .inventory-item.legendary { border-color: #ffd700; }
+  .inventory-item-name { position: absolute; bottom: -16px; font-size: 9px; color: var(--text-dim); white-space: nowrap; max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Character on home */
+  .home-title-row { display: flex; align-items: center; gap: 12px; }
+  .character-btn { background: none; border: 2px solid var(--border); border-radius: 10px; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .character-btn:active { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -209,7 +264,7 @@
 <div id="app" style="display:none;">
 
   <div id="screen-home" class="screen active">
-    <div class="mb-20"><h1>Iron Log</h1><p class="dim small mt-8">Your gym. Your data.</p></div>
+    <div class="mb-20"><div class="home-title-row"><h1>Iron Log</h1><button class="character-btn" onclick="openInventory()" id="home-character"></button></div><p class="dim small mt-8">Your gym. Your data.</p></div>
     <div id="today-plan" class="mb-20"></div>
     <div class="flex items-center justify-between mb-12"><h3 class="dim">This Week</h3></div>
     <div class="week-grid" id="week-grid"></div>
@@ -332,6 +387,27 @@
   <div id="preset-detail-content"></div>
   <button class="btn btn-primary mt-16" id="start-preset-btn">Start This Session</button>
 </div></div>
+
+<div class="pr-overlay" id="pr-overlay">
+  <div class="pr-content">
+    <div class="pr-title">NEW PR!</div>
+    <div class="pr-list" id="pr-list"></div>
+    <button class="btn btn-primary" id="pr-claim-btn" onclick="claimLootBoxes()">Claim Rewards</button>
+  </div>
+</div>
+
+<div class="lootbox-overlay" id="lootbox-overlay">
+  <div class="lootbox-content" id="lootbox-content"></div>
+</div>
+
+<div class="inventory-overlay" id="inventory-overlay">
+  <div class="inventory-sheet">
+    <div class="overlay-handle"></div>
+    <div class="flex items-center justify-between mb-16"><h2>Inventory</h2><button class="btn-ghost" onclick="closeInventory()">Close</button></div>
+    <div class="inventory-character" id="inventory-character"></div>
+    <div class="inventory-slots" id="inventory-slots"></div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -622,6 +698,7 @@ async function onGoogleToken(resp) {
   document.getElementById('anthropic-key').value = settings.anthropicKey;
   document.getElementById('anthropic-model').value = settings.anthropicModel;
   document.getElementById('weight-unit-btn').textContent = settings.weightUnit;
+  await loadCharacter();
   renderAll();
 }
 
@@ -767,6 +844,8 @@ let state = {
   currentWorkout: null,
   workoutHistory: [], // loaded from Sheets
   weightLog: [],      // loaded from Sheets
+  inventory: [],
+  equipped: { hat:null, shirt:null, pants:null, shoes:null, accessory:null },
 };
 
 function renderAll() {
@@ -900,6 +979,51 @@ function showPresetDetail(pid) {
 }
 
 // ============================================
+// PR TRACKING & PREPOPULATION
+// ============================================
+
+function getPreviousBest(exerciseName) {
+  for (const w of state.workoutHistory) {
+    const ex = w.exercises.find(e => e.exerciseName === exerciseName);
+    if (ex && ex.sets.length) {
+      let bestWeight = 0, bestReps = 0;
+      ex.sets.forEach(s => {
+        if (s.weight > bestWeight) bestWeight = s.weight;
+        if (s.reps > bestReps) bestReps = s.reps;
+      });
+      return { weight: bestWeight, reps: bestReps };
+    }
+  }
+  return { weight: 0, reps: 0 };
+}
+
+function detectPRs(workout) {
+  const prs = [];
+  workout.exercises.forEach(ex => {
+    let newBest = 0;
+    ex.sets.forEach(s => {
+      const vol = s.weight * s.reps;
+      if (vol > newBest) newBest = vol;
+    });
+    if (newBest <= 0) return;
+    let oldBest = 0;
+    for (const w of state.workoutHistory) {
+      const prev = w.exercises.find(e => e.exerciseName === ex.exerciseName);
+      if (prev) {
+        prev.sets.forEach(s => {
+          const vol = s.weight * s.reps;
+          if (vol > oldBest) oldBest = vol;
+        });
+      }
+    }
+    if (newBest > oldBest && oldBest > 0) {
+      prs.push({ exerciseName: ex.exerciseName, newBest, oldBest });
+    }
+  });
+  return prs;
+}
+
+// ============================================
 // WORKOUT
 // ============================================
 
@@ -917,7 +1041,8 @@ function startFromPreset(pid) {
   closeOverlay('preset-detail-overlay');
   const exercises = p.exercises.map(e => {
     const sets = [];
-    for (let i=0;i<e.defaultSets;i++) sets.push({id:'set_'+Date.now().toString(36)+'_'+i, weight:0, reps:0, effort:''});
+    const prev = getPreviousBest(e.exerciseName);
+    for (let i=0;i<e.defaultSets;i++) sets.push({id:'set_'+Date.now().toString(36)+'_'+i, weight:prev.weight, reps:prev.reps, effort:''});
     const found = state.exercises.find(x => x.name === e.exerciseName);
     return { exerciseId: found ? found.id : 'ex_'+Date.now().toString(36), exerciseName:e.exerciseName, sets };
   });
@@ -954,6 +1079,7 @@ async function finishWorkout() {
     exercises:w.exercises.map(ex=>({exerciseId:ex.exerciseId,exerciseName:ex.exerciseName,
       sets:ex.sets.map(s=>({id:s.id, weight:s.weight, reps:s.reps, effort:s.effort||''}))})),
   };
+  const prs = detectPRs(finished);
   state.currentWorkout=null;
   document.getElementById('finish-confirm').style.display='none';
   switchTab('home', document.querySelectorAll('nav button')[0]);
@@ -962,6 +1088,7 @@ async function finishWorkout() {
     await syncWorkoutToSheets(finished);
     state.workoutHistory.unshift(finished);
     renderHome(); toast('Workout saved -- '+dur+' min');
+    if (prs.length) showPRCelebration(prs);
   } catch(e) {
     toast('Failed to save: ' + e.message, true);
   }
@@ -1006,7 +1133,8 @@ function renderExerciseList(exercises) {
 function selectExercise(eid,ename) {
   if(!state.currentWorkout) return;
   if(state.currentWorkout.exercises.find(e=>e.exerciseId===eid)){closeOverlay('exercise-picker');toast('Already added');return;}
-  state.currentWorkout.exercises.push({exerciseId:eid,exerciseName:ename,sets:[]});
+  const prev = getPreviousBest(ename);
+  state.currentWorkout.exercises.push({exerciseId:eid,exerciseName:ename,sets:[{id:'set_'+Date.now().toString(36),weight:prev.weight,reps:prev.reps,effort:''}]});
   closeOverlay('exercise-picker');renderWorkout();
 }
 function showAddCustomExercise() {
@@ -1317,6 +1445,299 @@ function exportData() {
 }
 
 // ============================================
+// LOOT ITEMS & PR CELEBRATION
+// ============================================
+
+const LOOT_ITEMS = {
+  hat: [
+    { name:'Sweatband', rarity:'common', color:'#cc3333' },
+    { name:'Baseball Cap', rarity:'common', color:'#4466aa' },
+    { name:'Beanie', rarity:'uncommon', color:'#555555' },
+    { name:'Viking Helm', rarity:'rare', color:'#aa8833' },
+    { name:'Crown', rarity:'legendary', color:'#ffd700' },
+  ],
+  shirt: [
+    { name:'Tank Top', rarity:'common', color:'#dddddd' },
+    { name:'Gym Tee', rarity:'common', color:'#3388cc' },
+    { name:'Hoodie', rarity:'uncommon', color:'#666666' },
+    { name:'Compression Shirt', rarity:'rare', color:'#222222' },
+    { name:'Golden Armor', rarity:'legendary', color:'#ffd700' },
+  ],
+  pants: [
+    { name:'Gym Shorts', rarity:'common', color:'#444444' },
+    { name:'Joggers', rarity:'common', color:'#555566' },
+    { name:'Cargo Pants', rarity:'uncommon', color:'#667744' },
+    { name:'Leggings', rarity:'rare', color:'#333355' },
+    { name:'Golden Greaves', rarity:'legendary', color:'#ffd700' },
+  ],
+  shoes: [
+    { name:'Sneakers', rarity:'common', color:'#dddddd' },
+    { name:'Running Shoes', rarity:'common', color:'#cc4444' },
+    { name:'Lifting Shoes', rarity:'uncommon', color:'#3355aa' },
+    { name:'Combat Boots', rarity:'rare', color:'#443322' },
+    { name:'Winged Sandals', rarity:'legendary', color:'#ffd700' },
+  ],
+  accessory: [
+    { name:'Wrist Wraps', rarity:'common', color:'#cccccc' },
+    { name:'Lifting Belt', rarity:'common', color:'#8b6914' },
+    { name:'Knee Sleeves', rarity:'uncommon', color:'#cc3333' },
+    { name:'Chalk Bag', rarity:'rare', color:'#eeeeee' },
+    { name:'Infinity Gauntlet', rarity:'legendary', color:'#ffd700' },
+  ],
+};
+
+const RARITY_WEIGHTS = { common:60, uncommon:25, rare:12, legendary:3 };
+
+function rollLootBox() {
+  const slots = Object.keys(LOOT_ITEMS);
+  const slot = slots[Math.floor(Math.random() * slots.length)];
+  // weighted rarity pick
+  const total = Object.values(RARITY_WEIGHTS).reduce((a,b)=>a+b,0);
+  let r = Math.random() * total;
+  let rarity = 'common';
+  for (const [rar, w] of Object.entries(RARITY_WEIGHTS)) {
+    r -= w;
+    if (r <= 0) { rarity = rar; break; }
+  }
+  const items = LOOT_ITEMS[slot].filter(i => i.rarity === rarity);
+  if (!items.length) return { slot, ...LOOT_ITEMS[slot][0] };
+  return { slot, ...items[Math.floor(Math.random() * items.length)] };
+}
+
+let pendingLoot = [];
+let pendingLootIndex = 0;
+
+function showPRCelebration(prs) {
+  let h = '';
+  prs.forEach(pr => {
+    const pct = Math.round((pr.newBest - pr.oldBest) / pr.oldBest * 100);
+    h += '<div class="pr-item"><div class="pr-exercise">' + pr.exerciseName + '</div><div class="pr-improvement">' + pr.oldBest + ' -> ' + pr.newBest + ' vol (+' + pct + '%)</div></div>';
+  });
+  document.getElementById('pr-list').innerHTML = h;
+  document.getElementById('pr-overlay').classList.add('open');
+  pendingLoot = prs.map(() => rollLootBox());
+  pendingLootIndex = 0;
+}
+
+async function claimLootBoxes() {
+  document.getElementById('pr-overlay').classList.remove('open');
+  // save all loot items
+  const inventory = await dbGet('inventory') || [];
+  pendingLoot.forEach(item => inventory.push(item));
+  await dbSet('inventory', inventory);
+  state.inventory = inventory;
+  // show first loot box
+  showLootBox(0);
+}
+
+function showLootBox(idx) {
+  if (idx >= pendingLoot.length) {
+    document.getElementById('lootbox-overlay').classList.remove('open');
+    renderHomeCharacter();
+    return;
+  }
+  pendingLootIndex = idx;
+  const item = pendingLoot[idx];
+  const isLast = idx === pendingLoot.length - 1;
+  document.getElementById('lootbox-content').innerHTML =
+    '<p class="dim small mb-12">Reward ' + (idx+1) + ' of ' + pendingLoot.length + '</p>' +
+    '<div class="lootbox-box" id="lootbox-box" onclick="openLootBox()"><span style="font-size:40px">?</span></div>' +
+    '<div id="loot-reveal" style="display:none"></div>';
+  document.getElementById('lootbox-overlay').classList.add('open');
+}
+
+function openLootBox() {
+  const box = document.getElementById('lootbox-box');
+  if (box.classList.contains('shaking')) return;
+  box.classList.add('shaking');
+  setTimeout(() => {
+    box.classList.remove('shaking');
+    box.classList.add('opening');
+    setTimeout(() => revealLoot(), 400);
+  }, 600);
+}
+
+function revealLoot() {
+  const item = pendingLoot[pendingLootIndex];
+  const isLast = pendingLootIndex === pendingLoot.length - 1;
+  document.getElementById('lootbox-box').style.display = 'none';
+  const reveal = document.getElementById('loot-reveal');
+  reveal.style.display = 'block';
+  reveal.innerHTML =
+    '<div class="loot-reveal"><div class="loot-item-card ' + item.rarity + '">' +
+    '<div style="width:48px;height:48px;margin:0 auto;background:' + item.color + ';border-radius:8px;"></div>' +
+    '<div class="loot-rarity ' + item.rarity + '">' + item.rarity + '</div>' +
+    '<div class="loot-item-name">' + item.name + '</div>' +
+    '<div class="loot-slot">' + item.slot + '</div>' +
+    '</div></div>' +
+    '<button class="btn btn-primary mt-16" onclick="showLootBox(' + (pendingLootIndex + 1) + ')">' + (isLast ? 'Done' : 'Next') + '</button>';
+}
+
+// ============================================
+// CHARACTER SYSTEM
+// ============================================
+
+// 12x16 pixel art character base
+const CHARACTER_BASE = [
+  '....####....',
+  '...######...',
+  '...######...',
+  '....####....',
+  '..########..',
+  '.##########.',
+  '.####..####.',
+  '.####..####.',
+  '..########..',
+  '..########..',
+  '...##..##...',
+  '...##..##...',
+  '...##..##...',
+  '...##..##...',
+  '..##....##..',
+  '..##....##..',
+];
+
+const CHARACTER_COLORS = {
+  skin: '#e8b87a',
+  outline: '#5a4030',
+  shirt: '#5588cc',
+  pants: '#445566',
+  shoes: '#444444',
+  hair: '#553322',
+};
+
+// Which rows map to which body part
+const CHARACTER_ZONES = {
+  hat: [[0,1],[1,1],[2,1]],
+  hair: [[0,0],[1,0],[2,0]],
+  shirt: [[4,1],[5,1],[6,1],[7,1],[8,1],[9,1]],
+  pants: [[10,1],[11,1],[12,1],[13,1]],
+  shoes: [[14,1],[15,1]],
+};
+
+function getCharacterPixelColor(x, y, equipped) {
+  const ch = CHARACTER_BASE[y];
+  if (!ch || ch[x] !== '#') return null;
+  // head area (rows 0-3)
+  if (y <= 3) return CHARACTER_COLORS.skin;
+  // shirt area (rows 4-9)
+  if (y >= 4 && y <= 9) {
+    const color = equipped.shirt ? (LOOT_ITEMS.shirt.find(i=>i.name===equipped.shirt)||{}).color : CHARACTER_COLORS.shirt;
+    return color || CHARACTER_COLORS.shirt;
+  }
+  // pants area (rows 10-13)
+  if (y >= 10 && y <= 13) {
+    const color = equipped.pants ? (LOOT_ITEMS.pants.find(i=>i.name===equipped.pants)||{}).color : CHARACTER_COLORS.pants;
+    return color || CHARACTER_COLORS.pants;
+  }
+  // shoes area (rows 14-15)
+  if (y >= 14) {
+    const color = equipped.shoes ? (LOOT_ITEMS.shoes.find(i=>i.name===equipped.shoes)||{}).color : CHARACTER_COLORS.shoes;
+    return color || CHARACTER_COLORS.shoes;
+  }
+  return CHARACTER_COLORS.skin;
+}
+
+function renderCharacterSVG(equipped, size) {
+  equipped = equipped || {};
+  size = size || 48;
+  const rows = CHARACTER_BASE.length;
+  const cols = CHARACTER_BASE[0].length;
+  let rects = '';
+
+  // draw base character
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const c = getCharacterPixelColor(x, y, equipped);
+      if (c) rects += '<rect x="'+x+'" y="'+y+'" width="1" height="1" fill="'+c+'"/>';
+    }
+  }
+
+  // hat overlay (rows 0-2, above head)
+  if (equipped.hat) {
+    const hatItem = LOOT_ITEMS.hat.find(i=>i.name===equipped.hat);
+    if (hatItem) {
+      // draw hat on top of head
+      for (let x = 3; x <= 8; x++) {
+        rects += '<rect x="'+x+'" y="0" width="1" height="1" fill="'+hatItem.color+'"/>';
+        rects += '<rect x="'+x+'" y="1" width="1" height="1" fill="'+hatItem.color+'"/>';
+      }
+      // brim
+      for (let x = 2; x <= 9; x++) {
+        rects += '<rect x="'+x+'" y="2" width="1" height="1" fill="'+hatItem.color+'"/>';
+      }
+    }
+  }
+
+  // accessory overlay (wrist area, rows 6-7)
+  if (equipped.accessory) {
+    const accItem = LOOT_ITEMS.accessory.find(i=>i.name===equipped.accessory);
+    if (accItem) {
+      rects += '<rect x="1" y="7" width="1" height="1" fill="'+accItem.color+'"/>';
+      rects += '<rect x="10" y="7" width="1" height="1" fill="'+accItem.color+'"/>';
+    }
+  }
+
+  return '<svg viewBox="0 0 '+cols+' '+rows+'" width="'+size+'" height="'+(size * rows/cols)+'" style="image-rendering:pixelated">'+rects+'</svg>';
+}
+
+function renderHomeCharacter() {
+  const el = document.getElementById('home-character');
+  if (el) el.innerHTML = renderCharacterSVG(state.equipped, 36);
+}
+
+function openInventory() {
+  renderInventory();
+  document.getElementById('inventory-overlay').classList.add('open');
+}
+
+function closeInventory() {
+  document.getElementById('inventory-overlay').classList.remove('open');
+}
+
+function renderInventory() {
+  // character preview
+  document.getElementById('inventory-character').innerHTML = renderCharacterSVG(state.equipped, 96);
+
+  const slots = ['hat','shirt','pants','shoes','accessory'];
+  let h = '';
+  slots.forEach(slot => {
+    h += '<div class="inventory-slot-label">' + slot + (state.equipped[slot] ? ' -- ' + state.equipped[slot] : '') + '</div>';
+    h += '<div class="inventory-items">';
+    const items = (state.inventory || []).filter(i => i.slot === slot);
+    // deduplicate by name
+    const seen = {};
+    items.forEach(i => { seen[i.name] = i; });
+    Object.values(seen).forEach(item => {
+      const isEquipped = state.equipped[slot] === item.name;
+      h += '<div class="inventory-item ' + item.rarity + (isEquipped ? ' equipped' : '') + '" onclick="toggleEquip(\'' + slot + '\',\'' + item.name.replace(/'/g,"\\'") + '\')" title="' + item.name + '">';
+      h += '<div style="width:28px;height:28px;background:' + item.color + ';border-radius:4px;"></div>';
+      h += '</div>';
+    });
+    if (!Object.keys(seen).length) h += '<span class="small dim" style="padding:8px 0;">No items</span>';
+    h += '</div>';
+  });
+  document.getElementById('inventory-slots').innerHTML = h;
+}
+
+async function toggleEquip(slot, itemName) {
+  if (state.equipped[slot] === itemName) {
+    state.equipped[slot] = null;
+  } else {
+    state.equipped[slot] = itemName;
+  }
+  await dbSet('equipped', state.equipped);
+  renderInventory();
+  renderHomeCharacter();
+}
+
+async function loadCharacter() {
+  state.inventory = await dbGet('inventory') || [];
+  state.equipped = await dbGet('equipped') || { hat:null, shirt:null, pants:null, shoes:null, accessory:null };
+  renderHomeCharacter();
+}
+
+// ============================================
 // UTILS
 // ============================================
 
@@ -1327,7 +1748,7 @@ function toast(msg, isError) {
   setTimeout(() => e.className = 'toast', 2500);
 }
 
-document.querySelectorAll('.overlay').forEach(o => {
+document.querySelectorAll('.overlay, .inventory-overlay').forEach(o => {
   o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
 });
 
