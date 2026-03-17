@@ -700,6 +700,7 @@ async function onGoogleToken(resp) {
   document.getElementById('weight-unit-btn').textContent = settings.weightUnit;
   await loadCharacter();
   renderAll();
+  flushPendingWorkouts();
 }
 
 function googleSignOut() {
@@ -710,12 +711,32 @@ function googleSignOut() {
   renderGate();
 }
 
-async function sheetsApi(path, method, body) {
+function refreshToken() {
+  return new Promise((resolve, reject) => {
+    if (!tokenClient) { reject(new Error('Not signed in')); return; }
+    const orig = tokenClient.callback;
+    tokenClient.callback = (resp) => {
+      tokenClient.callback = orig;
+      if (resp.error) { reject(new Error(resp.error)); return; }
+      gtoken = resp.access_token;
+      resolve();
+    };
+    tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+async function sheetsApi(path, method, body, _retried) {
   if (!gtoken) throw new Error('Not signed in');
   const opts = { method: method || 'GET', headers: { 'Authorization': 'Bearer ' + gtoken } };
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
   const resp = await fetch(SHEETS_BASE + path, opts);
   if (resp.status === 401) {
+    if (!_retried) {
+      try {
+        await refreshToken();
+        return sheetsApi(path, method, body, true);
+      } catch(e) { /* refresh failed, fall through */ }
+    }
     gtoken = null;
     document.getElementById('app').style.display = 'none';
     document.getElementById('sign-in-gate').style.display = '';
@@ -804,6 +825,18 @@ async function syncWorkoutToSheets(workout) {
   if (setRows.length) {
     await sheetsApi('/' + sid + '/values/Sets!A:I:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST', { values: setRows });
   }
+}
+
+async function flushPendingWorkouts() {
+  const pending = await dbGet('pendingWorkouts') || [];
+  if (!pending.length) return;
+  const failed = [];
+  for (const w of pending) {
+    try { await syncWorkoutToSheets(w); }
+    catch(e) { failed.push(w); }
+  }
+  await dbSet('pendingWorkouts', failed);
+  if (pending.length > failed.length) toast((pending.length - failed.length) + ' offline workout(s) synced');
 }
 
 async function syncWeightToSheets(entry) {
@@ -1084,13 +1117,19 @@ async function finishWorkout() {
   document.getElementById('finish-confirm').style.display='none';
   switchTab('home', document.querySelectorAll('nav button')[0]);
 
+  state.workoutHistory.unshift(finished);
+  renderHome();
   try {
     await syncWorkoutToSheets(finished);
-    state.workoutHistory.unshift(finished);
-    renderHome(); toast('Workout saved -- '+dur+' min');
+    toast('Workout saved -- '+dur+' min');
     if (prs.length) showPRCelebration(prs);
   } catch(e) {
-    toast('Failed to save: ' + e.message, true);
+    // stash locally so it can be retried on next auth
+    const pending = await dbGet('pendingWorkouts') || [];
+    pending.push(finished);
+    await dbSet('pendingWorkouts', pending);
+    toast('Saved offline -- will sync when reconnected', true);
+    if (prs.length) showPRCelebration(prs);
   }
 }
 
