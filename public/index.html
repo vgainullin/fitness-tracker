@@ -250,6 +250,14 @@
   .home-title-row { display: flex; align-items: center; gap: 12px; }
   .character-btn { background: none; border: 2px solid var(--border); border-radius: 10px; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .character-btn:active { border-color: var(--accent); }
+
+  /* AI Suggestion */
+  .ai-suggestion { border-color: var(--purple); }
+  .ai-label { font-size: 12px; font-weight: 600; color: var(--purple); text-transform: uppercase; letter-spacing: 0.8px; }
+  .ai-goal { font-size: 13px; color: var(--text-dim); font-style: italic; margin: 8px 0; line-height: 1.4; }
+  .ai-exercise-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .ai-exercise-row .ai-ex-detail { font-family: var(--mono); font-size: 13px; color: var(--text-dim); }
+  .ai-regen-btn { background: none; border: none; color: var(--purple); font-family: var(--font); font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px 8px; }
 </style>
 </head>
 <body>
@@ -592,6 +600,11 @@ function pixelArtSVG(group, size) {
   return '<svg viewBox="0 0 8 8" width="'+size+'" height="'+size+'" class="pixel-icon" style="image-rendering:pixelated">'+rects+'</svg>';
 }
 
+function youtubeLink(exerciseName) {
+  const q = encodeURIComponent(exerciseName + ' exercise form');
+  return '<a href="https://www.youtube.com/results?search_query=' + q + '" target="_blank" rel="noopener" style="color:var(--red);font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap;" onclick="event.stopPropagation()">YT</a>';
+}
+
 // ============================================
 // INDEXEDDB SETTINGS STORE
 // ============================================
@@ -925,11 +938,19 @@ function renderTodayPlan() {
   const today = new Date().getDay();
   const pid = state.weekPlan[today];
   const preset = pid ? state.presets.find(p=>p.id===pid) : null;
+  let html = '';
+  if (settings.anthropicKey) {
+    html += '<div id="ai-suggestion-area" class="mb-12"></div>';
+  }
   if (preset) {
     const list = preset.exercises.map(e=>e.exerciseName).join(', ');
-    c.innerHTML = '<div class="card" style="border-color:var('+getPresetColorVar(preset.color)+')"><div class="flex items-center justify-between mb-8"><span class="day-preset '+preset.color+'">'+preset.name+' Day</span><span class="small dim">Today</span></div><p class="small dim mb-12">'+list+'</p><button class="btn btn-primary" onclick="startFromPreset(\''+preset.id+'\')">Start '+preset.name+' Session</button></div>';
+    html += '<div class="card" style="border-color:var('+getPresetColorVar(preset.color)+')"><div class="flex items-center justify-between mb-8"><span class="day-preset '+preset.color+'">'+preset.name+' Day</span><span class="small dim">Today</span></div><p class="small dim mb-12">'+list+'</p><button class="btn btn-primary" onclick="startFromPreset(\''+preset.id+'\')">Start '+preset.name+' Session</button></div>';
   } else {
-    c.innerHTML = '<div class="card"><div class="flex items-center justify-between mb-8"><span class="small dim">Today -- Rest Day</span></div><button class="btn btn-secondary btn-full" onclick="startWorkout()">Start Empty Workout</button></div>';
+    html += '<div class="card"><div class="flex items-center justify-between mb-8"><span class="small dim">Today -- Rest Day</span></div><button class="btn btn-secondary btn-full" onclick="startWorkout()">Start Empty Workout</button></div>';
+  }
+  c.innerHTML = html;
+  if (settings.anthropicKey) {
+    loadAiSuggestionIfCached();
   }
 }
 
@@ -1002,7 +1023,7 @@ function showPresetDetail(pid) {
   document.getElementById('preset-detail-title').textContent = p.name;
   let h = '';
   p.exercises.forEach(e => {
-    h += '<div style="padding:10px 0;border-bottom:1px solid var(--border);" class="flex items-center justify-between"><span style="font-size:15px;">'+e.exerciseName+'</span><span class="mono small dim">'+e.defaultSets+' sets</span></div>';
+    h += '<div style="padding:10px 0;border-bottom:1px solid var(--border);" class="flex items-center justify-between"><span style="font-size:15px;">'+e.exerciseName+'</span><span class="flex items-center gap-8">'+youtubeLink(e.exerciseName)+'<span class="mono small dim">'+e.defaultSets+' sets</span></span></div>';
   });
   document.getElementById('preset-detail-content').innerHTML = h;
   const btn = document.getElementById('start-preset-btn');
@@ -1202,7 +1223,7 @@ function renderWorkout() {
   state.currentWorkout.exercises.forEach((ex,xi)=>{
     const tip = getExerciseTip(ex.exerciseName);
     const mg = (state.exercises.find(e=>e.id===ex.exerciseId)||{}).muscleGroup||'Other';
-    h+='<div class="exercise-block card mb-12"><div class="exercise-block-header">'+pixelArtSVG(mg,20)+'<h3 class="accent" style="margin-left:8px;">'+ex.exerciseName+'</h3><button class="btn-ghost" onclick="removeExercise('+xi+')" style="color:var(--text-faint);font-size:12px;">Remove</button></div>';
+    h+='<div class="exercise-block card mb-12"><div class="exercise-block-header">'+pixelArtSVG(mg,20)+'<h3 class="accent" style="margin-left:8px;">'+ex.exerciseName+'</h3>'+youtubeLink(ex.exerciseName)+'<button class="btn-ghost" onclick="removeExercise('+xi+')" style="color:var(--text-faint);font-size:12px;">Remove</button></div>';
     if (tip) {
       h+='<div id="tip-'+xi+'" style="display:none;" class="tip-text">'+tip+'</div>';
       h+='<button class="tip-toggle" onclick="var el=document.getElementById(\'tip-'+xi+'\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Form tip</button>';
@@ -1263,7 +1284,7 @@ function showWorkoutDetail(idx) {
   let h='<div class="dim small mb-16">'+(w.durationMinutes||'--')+' minutes'+(w.presetName?' -- '+w.presetName:'')+'</div>';
   w.exercises.forEach(ex=>{
     const mg = (state.exercises.find(e=>e.id===ex.exerciseId)||{}).muscleGroup||'Other';
-    h+='<div class="exercise-block mb-16"><div class="flex items-center gap-8 mb-8">'+pixelArtSVG(mg,20)+'<h3 class="accent">'+ex.exerciseName+'</h3></div>';
+    h+='<div class="exercise-block mb-16"><div class="flex items-center gap-8 mb-8">'+pixelArtSVG(mg,20)+'<h3 class="accent" style="flex:1;">'+ex.exerciseName+'</h3>'+youtubeLink(ex.exerciseName)+'</div>';
     h+='<div class="set-row header"><span>Set</span><span style="text-align:center">Wt</span><span style="text-align:center">Reps</span><span style="text-align:center">Effort</span><span></span></div>';
     ex.sets.forEach((s,i)=>{
       const el=s.effort?s.effort.charAt(0).toUpperCase()+s.effort.slice(1):'--';
@@ -1381,6 +1402,154 @@ function renderWeightHistory() {
     h += '<div class="weight-entry"><span class="weight-val">'+e.weight+'<span class="small dim"> '+e.unit+'</span></span><span class="weight-date">'+ds+'</span></div>';
   });
   c.innerHTML = h;
+}
+
+// ============================================
+// AI WORKOUT SUGGESTION
+// ============================================
+
+function getHistoryHash() {
+  return state.workoutHistory.slice(0, 5).map(w => w.id).join(',');
+}
+
+function getTodayPreset() {
+  const today = new Date().getDay();
+  const pid = state.weekPlan[today];
+  return pid ? state.presets.find(p => p.id === pid) : null;
+}
+
+function buildAiPrompt() {
+  const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const preset = getTodayPreset();
+
+  // Determine muscle groups for today from scheduled preset
+  const todayMuscleGroups = new Set();
+  if (preset) {
+    preset.exercises.forEach(e => {
+      const found = state.exercises.find(x => x.name === e.exerciseName);
+      if (found) todayMuscleGroups.add(found.muscleGroup);
+    });
+  }
+
+  // Filter exercises by today's muscle groups, up to 80
+  const pool = todayMuscleGroups.size > 0
+    ? state.exercises.filter(e => todayMuscleGroups.has(e.muscleGroup))
+    : state.exercises;
+  const exerciseNames = pool.slice(0, 80).map(e => e.name).join(', ');
+
+  // Format last 5 workouts
+  const recentStr = state.workoutHistory.slice(0, 5).map(w => {
+    const ds = new Date(w.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const exLines = w.exercises.map(ex => {
+      const sets = ex.sets.map(s => s.weight + 'x' + s.reps + (s.effort ? ' (' + s.effort + ')' : '')).join(', ');
+      return '  ' + ex.exerciseName + ': ' + sets;
+    }).join('\n');
+    return ds + (w.presetName ? ' (' + w.presetName + ')' : '') + ':\n' + exLines;
+  }).join('\n\n') || 'No recent workouts';
+
+  const presetInfo = preset
+    ? 'Scheduled session: ' + preset.name + ' (' + preset.exercises.map(e => e.exerciseName).join(', ') + ')'
+    : 'No session scheduled (rest day or free choice)';
+
+  const system = 'You are a fitness coach AI. Respond with ONLY valid JSON, no markdown fences, no explanation:\n{"goal":"...","exercises":[{"exerciseName":"...","sets":3,"reps":8,"weight":135,"note":"..."}]}\nUse only exercise names from the provided list. Suggest 4-6 exercises. Base weights on history. Apply progressive overload where appropriate. "note" can be empty string.';
+
+  const userMessage = 'Today: ' + todayName + '\n' + presetInfo + '\n\nRecent workout history (last 5):\n' + recentStr + '\n\nAvailable exercises for today:\n' + exerciseNames + '\n\nSuggest a workout for today.';
+
+  return { system, userMessage };
+}
+
+async function generateAiSuggestion() {
+  const area = document.getElementById('ai-suggestion-area');
+  if (!area) return;
+  area.innerHTML = '<div class="card ai-suggestion"><span class="ai-label">AI Suggestion</span><p class="ai-goal">Generating suggestion...</p></div>';
+
+  const { system, userMessage } = buildAiPrompt();
+
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': settings.anthropicKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: settings.anthropicModel || 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system,
+        messages: [{ role: 'user', content: userMessage }],
+      }),
+    });
+    const r = await resp.json();
+    if (!r.content || !r.content.length) {
+      throw new Error(r.error ? (r.error.message || String(r.error)) : 'No response from AI');
+    }
+    let raw = r.content.map(b => b.text).join('');
+    raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/,'').trim();
+    const suggestion = JSON.parse(raw);
+
+    // Validate exercise names against known exercises
+    const validNames = new Set(state.exercises.map(e => e.name));
+    suggestion.exercises = (suggestion.exercises || []).filter(e => validNames.has(e.exerciseName));
+
+    const today = new Date().toISOString().slice(0, 10);
+    const preset = getTodayPreset();
+    await dbSet('aiSuggestion', { date: today, presetId: preset ? preset.id : null, historyHash: getHistoryHash(), suggestion });
+
+    renderAiSuggestion(suggestion);
+  } catch(e) {
+    const area2 = document.getElementById('ai-suggestion-area');
+    if (area2) area2.innerHTML = '<div class="card ai-suggestion"><span class="ai-label">AI Suggestion</span><p class="ai-goal" style="color:var(--red)">Error: ' + escapeHtml(e.message) + '</p><button class="btn btn-secondary btn-sm mt-8" onclick="generateAiSuggestion()">Retry</button></div>';
+  }
+}
+
+async function loadAiSuggestionIfCached() {
+  const area = document.getElementById('ai-suggestion-area');
+  if (!area) return;
+  const cached = await dbGet('aiSuggestion');
+  const today = new Date().toISOString().slice(0, 10);
+  const preset = getTodayPreset();
+  const presetId = preset ? preset.id : null;
+  const historyHash = getHistoryHash();
+  if (cached && cached.date === today && cached.presetId === presetId && cached.historyHash === historyHash) {
+    renderAiSuggestion(cached.suggestion);
+  } else {
+    area.innerHTML = '<button class="btn btn-secondary btn-full" style="border-color:var(--purple);color:var(--purple);" onclick="generateAiSuggestion()">Generate AI Suggestion</button>';
+  }
+}
+
+function renderAiSuggestion(suggestion) {
+  const area = document.getElementById('ai-suggestion-area');
+  if (!area) return;
+  let h = '<div class="card ai-suggestion">';
+  h += '<div class="flex items-center justify-between mb-8"><span class="ai-label">AI Suggestion</span><button class="ai-regen-btn" onclick="generateAiSuggestion()">Regenerate</button></div>';
+  if (suggestion.goal) h += '<p class="ai-goal">' + escapeHtml(suggestion.goal) + '</p>';
+  (suggestion.exercises || []).forEach(ex => {
+    h += '<div class="ai-exercise-row"><span>' + escapeHtml(ex.exerciseName) + '</span><span class="ai-ex-detail">' + ex.sets + 'x' + ex.reps + (ex.weight ? ' @ ' + ex.weight + ' lbs' : '') + '</span></div>';
+    if (ex.note) h += '<div class="small dim" style="padding:2px 0 6px;">' + escapeHtml(ex.note) + '</div>';
+  });
+  h += '<button class="btn btn-primary mt-12" onclick="startFromAiSuggestion()">Start AI Workout</button>';
+  h += '</div>';
+  area.innerHTML = h;
+}
+
+async function startFromAiSuggestion() {
+  const cached = await dbGet('aiSuggestion');
+  if (!cached || !cached.suggestion) { toast('No AI suggestion available', true); return; }
+  const suggestion = cached.suggestion;
+  const exercises = (suggestion.exercises || []).map((e, ei) => {
+    const found = state.exercises.find(x => x.name === e.exerciseName);
+    const sets = [];
+    for (let i = 0; i < (e.sets || 3); i++) {
+      sets.push({ id: 'set_' + (Date.now() + ei * 100 + i).toString(36), weight: e.weight || 0, reps: e.reps || 0, effort: '' });
+    }
+    return { exerciseId: found ? found.id : 'ex_' + Date.now().toString(36), exerciseName: e.exerciseName, sets };
+  });
+  state.currentWorkout = { id: 'wk_' + Date.now().toString(36), startTime: Date.now(), exercises, presetName: 'AI Suggestion' };
+  switchTab('workout', document.querySelectorAll('nav button')[1]);
+  renderWorkout();
+  startTimer();
+  toast('AI Workout started');
 }
 
 // ============================================
