@@ -1223,7 +1223,7 @@ function renderWorkout() {
   state.currentWorkout.exercises.forEach((ex,xi)=>{
     const tip = getExerciseTip(ex.exerciseName);
     const mg = (state.exercises.find(e=>e.id===ex.exerciseId)||{}).muscleGroup||'Other';
-    h+='<div class="exercise-block card mb-12"><div class="exercise-block-header">'+pixelArtSVG(mg,20)+'<h3 class="accent" style="margin-left:8px;">'+ex.exerciseName+'</h3>'+youtubeLink(ex.exerciseName)+'<button class="btn-ghost" onclick="removeExercise('+xi+')" style="color:var(--text-faint);font-size:12px;">Remove</button></div>';
+    h+='<div class="exercise-block card mb-12"><div class="exercise-block-header">'+pixelArtSVG(mg,20)+'<h3 class="accent" style="margin-left:8px;flex:1;">'+ex.exerciseName+'</h3><span class="flex items-center" style="gap:12px;">'+youtubeLink(ex.exerciseName)+'<button class="btn-ghost" onclick="confirmRemoveExercise('+xi+')" style="color:var(--text-faint);font-size:12px;">Remove</button></span></div>';
     if (tip) {
       h+='<div id="tip-'+xi+'" style="display:none;" class="tip-text">'+tip+'</div>';
       h+='<button class="tip-toggle" onclick="var el=document.getElementById(\'tip-'+xi+'\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Form tip</button>';
@@ -1257,6 +1257,16 @@ function updateSet(xi,si,field,val) {
 }
 function removeSet(xi,si){state.currentWorkout.exercises[xi].sets.splice(si,1);renderWorkout();}
 function removeExercise(xi){state.currentWorkout.exercises.splice(xi,1);renderWorkout();}
+let pendingRemoveExercise = null;
+function confirmRemoveExercise(xi){
+  if (pendingRemoveExercise === xi) { removeExercise(xi); pendingRemoveExercise = null; return; }
+  pendingRemoveExercise = xi;
+  const btns = document.querySelectorAll('.exercise-block-header .btn-ghost');
+  btns.forEach((b,i) => { if(b.textContent.trim()==='Tap to confirm') { b.textContent='Remove'; b.style.color='var(--text-faint)'; }});
+  const btn = btns[xi];
+  if(btn){ btn.textContent='Tap to confirm'; btn.style.color='var(--red)'; }
+  setTimeout(()=>{ if(pendingRemoveExercise===xi){ pendingRemoveExercise=null; if(btn){btn.textContent='Remove';btn.style.color='var(--text-faint)';} }},3000);
+}
 
 // ============================================
 // HISTORY
