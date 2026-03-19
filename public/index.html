@@ -600,9 +600,9 @@ function pixelArtSVG(group, size) {
   return '<svg viewBox="0 0 8 8" width="'+size+'" height="'+size+'" class="pixel-icon" style="image-rendering:pixelated">'+rects+'</svg>';
 }
 
-function youtubeLink(exerciseName) {
+function youtubeLink(exerciseName, cls) {
   const q = encodeURIComponent(exerciseName + ' exercise form');
-  return '<a href="https://www.youtube.com/results?search_query=' + q + '" target="_blank" rel="noopener" style="color:var(--red);font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap;" onclick="event.stopPropagation()">YT</a>';
+  return '<a href="https://www.youtube.com/results?search_query=' + q + '" target="_blank" rel="noopener" class="' + (cls||'accent') + '" style="text-decoration:none;" onclick="event.stopPropagation()">' + exerciseName + '</a>';
 }
 
 // ============================================
@@ -1023,7 +1023,7 @@ function showPresetDetail(pid) {
   document.getElementById('preset-detail-title').textContent = p.name;
   let h = '';
   p.exercises.forEach(e => {
-    h += '<div style="padding:10px 0;border-bottom:1px solid var(--border);" class="flex items-center justify-between"><span style="font-size:15px;">'+e.exerciseName+'</span><span class="flex items-center gap-8">'+youtubeLink(e.exerciseName)+'<span class="mono small dim">'+e.defaultSets+' sets</span></span></div>';
+    h += '<div style="padding:10px 0;border-bottom:1px solid var(--border);" class="flex items-center justify-between"><span style="font-size:15px;">'+youtubeLink(e.exerciseName, '')+'</span><span class="mono small dim">'+e.defaultSets+' sets</span></div>';
   });
   document.getElementById('preset-detail-content').innerHTML = h;
   const btn = document.getElementById('start-preset-btn');
@@ -1223,7 +1223,7 @@ function renderWorkout() {
   state.currentWorkout.exercises.forEach((ex,xi)=>{
     const tip = getExerciseTip(ex.exerciseName);
     const mg = (state.exercises.find(e=>e.id===ex.exerciseId)||{}).muscleGroup||'Other';
-    h+='<div class="exercise-block card mb-12"><div class="exercise-block-header">'+pixelArtSVG(mg,20)+'<h3 class="accent" style="margin-left:8px;flex:1;">'+ex.exerciseName+'</h3><span class="flex items-center" style="gap:12px;">'+youtubeLink(ex.exerciseName)+'<button class="btn-ghost" onclick="confirmRemoveExercise('+xi+')" style="color:var(--text-faint);font-size:12px;">Remove</button></span></div>';
+    h+='<div class="exercise-block card mb-12"><div class="exercise-block-header">'+pixelArtSVG(mg,20)+'<h3 style="margin-left:8px;flex:1;">'+youtubeLink(ex.exerciseName)+'</h3><button class="btn-ghost" onclick="confirmRemoveExercise('+xi+')" style="color:var(--text-faint);font-size:12px;">Remove</button></div>';
     if (tip) {
       h+='<div id="tip-'+xi+'" style="display:none;" class="tip-text">'+tip+'</div>';
       h+='<button class="tip-toggle" onclick="var el=document.getElementById(\'tip-'+xi+'\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Form tip</button>';
@@ -1231,7 +1231,7 @@ function renderWorkout() {
     h+='<div class="set-row header"><span>Set</span><span style="text-align:center">Wt</span><span style="text-align:center">Reps</span><span style="text-align:center">Effort</span><span></span></div>';
     ex.sets.forEach((s,si)=>{
       h+='<div class="set-row"><span class="set-num">'+(si+1)+'</span>';
-      h+='<input type="number" inputmode="decimal" value="'+(s.weight||'')+'" placeholder="0" onchange="updateSet('+xi+','+si+',\'weight\',this.value)">';
+      h+='<input type="number" value="'+(s.weight||'')+'" placeholder="0" onchange="updateSet('+xi+','+si+',\'weight\',this.value)">';
       h+='<input type="number" inputmode="numeric" value="'+(s.reps||'')+'" placeholder="0" onchange="updateSet('+xi+','+si+',\'reps\',this.value)">';
       h+='<div class="effort-toggle">';
       h+='<button class="effort-btn '+(s.effort==='light'?'active light':'')+'" onclick="updateSet('+xi+','+si+',\'effort\',\'light\');renderWorkout()">L</button>';
@@ -1294,7 +1294,7 @@ function showWorkoutDetail(idx) {
   let h='<div class="dim small mb-16">'+(w.durationMinutes||'--')+' minutes'+(w.presetName?' -- '+w.presetName:'')+'</div>';
   w.exercises.forEach(ex=>{
     const mg = (state.exercises.find(e=>e.id===ex.exerciseId)||{}).muscleGroup||'Other';
-    h+='<div class="exercise-block mb-16"><div class="flex items-center gap-8 mb-8">'+pixelArtSVG(mg,20)+'<h3 class="accent" style="flex:1;">'+ex.exerciseName+'</h3>'+youtubeLink(ex.exerciseName)+'</div>';
+    h+='<div class="exercise-block mb-16"><div class="flex items-center gap-8 mb-8">'+pixelArtSVG(mg,20)+'<h3>'+youtubeLink(ex.exerciseName)+'</h3></div>';
     h+='<div class="set-row header"><span>Set</span><span style="text-align:center">Wt</span><span style="text-align:center">Reps</span><span style="text-align:center">Effort</span><span></span></div>';
     ex.sets.forEach((s,i)=>{
       const el=s.effort?s.effort.charAt(0).toUpperCase()+s.effort.slice(1):'--';
