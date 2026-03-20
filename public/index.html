@@ -322,7 +322,7 @@
     <div id="history-list"></div>
   </div>
 
-  <div id="screen-chat" class="screen" style="padding-bottom: calc(16px + var(--safe-bottom));">
+  <div id="screen-chat" class="screen" style="padding-bottom: calc(80px + var(--safe-bottom));">
     <h2 class="mb-12">Coach</h2>
     <div id="chat-area"></div>
   </div>
@@ -338,7 +338,9 @@
     </div>
     <div class="settings-section">
       <h3>AI Coach (Anthropic)</h3>
-      <div class="input-group"><div class="input-label">API Key</div><input type="password" id="anthropic-key" placeholder="sk-ant-..." oninput="saveSetting('anthropicKey',this.value.trim())"></div>
+      <div class="input-group"><div class="input-label">API Key</div><input type="password" id="anthropic-key" placeholder="sk-ant-..."></div>
+      <button class="btn btn-secondary btn-sm btn-full mb-12" onclick="saveAnthropicKey()">Save Key</button>
+      <div id="anthropic-key-status"></div>
       <div class="input-group"><div class="input-label">Model</div><select id="anthropic-model" onchange="saveSetting('anthropicModel',this.value)">
         <option value="claude-haiku-4-5-20251001">Haiku 4.5 (fast, cheap)</option>
         <option value="claude-sonnet-4-5-20250514">Sonnet 4.5 (balanced)</option>
@@ -708,7 +710,10 @@ async function onGoogleToken(resp) {
   await loadDataFromSheets();
   document.getElementById('sign-in-gate').style.display = 'none';
   document.getElementById('app').style.display = '';
-  document.getElementById('anthropic-key').value = settings.anthropicKey;
+  if (settings.anthropicKey) {
+    document.getElementById('anthropic-key').value = settings.anthropicKey;
+    document.getElementById('anthropic-key-status').innerHTML = '<p class="small" style="color:var(--green)">Key saved</p>';
+  }
   document.getElementById('anthropic-model').value = settings.anthropicModel;
   document.getElementById('weight-unit-btn').textContent = settings.weightUnit;
   await loadCharacter();
@@ -1656,6 +1661,30 @@ async function sendChat() {
 // ============================================
 // SETTINGS
 // ============================================
+
+async function saveAnthropicKey() {
+  const key = document.getElementById('anthropic-key').value.trim();
+  const status = document.getElementById('anthropic-key-status');
+  if (!key) {
+    await saveSetting('anthropicKey', '');
+    status.innerHTML = '<p class="small dim">Key removed</p>';
+    return;
+  }
+  status.innerHTML = '<p class="small dim">Verifying key...</p>';
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
+    });
+    const r = await resp.json();
+    if (r.error) throw new Error(r.error.message || String(r.error));
+    await saveSetting('anthropicKey', key);
+    status.innerHTML = '<p class="small" style="color:var(--green)">Key verified and saved</p>';
+  } catch(e) {
+    status.innerHTML = '<p class="small" style="color:var(--red)">Failed: ' + escapeHtml(e.message) + '</p>';
+  }
+}
 
 function exportData() {
   const b = new Blob([JSON.stringify({workoutHistory:state.workoutHistory,weightLog:state.weightLog},null,2)],{type:'application/json'});
