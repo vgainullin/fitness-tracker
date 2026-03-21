@@ -343,8 +343,8 @@
       <div id="anthropic-key-status"></div>
       <div class="input-group"><div class="input-label">Model</div><select id="anthropic-model" onchange="saveSetting('anthropicModel',this.value)">
         <option value="claude-haiku-4-5-20251001">Haiku 4.5 (fast, cheap)</option>
-        <option value="claude-sonnet-4-5-20250514">Sonnet 4.5 (balanced)</option>
-        <option value="claude-opus-4-0-20250514">Opus 4 (powerful)</option>
+        <option value="claude-sonnet-4-6">Sonnet 4.6 (balanced)</option>
+        <option value="claude-opus-4-6">Opus 4.6 (powerful)</option>
       </select></div>
     </div>
     <div class="settings-section">
@@ -1648,7 +1648,7 @@ async function sendChat() {
     if (r.content && r.content.length) {
       chatMessages.push({ role: 'assistant', content: r.content.map(b => b.text).join('') });
     } else {
-      chatMessages.push({ role: 'error', content: r.error ? (r.error.message || r.error) : 'Unknown error' });
+      chatMessages.push({ role: 'error', content: r.error ? (r.error.message || JSON.stringify(r.error)) : 'Unknown error: ' + JSON.stringify(r) });
     }
   } catch (e) {
     btn.disabled = false;
