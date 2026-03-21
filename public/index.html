@@ -1612,12 +1612,105 @@ function chatKeydown(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
 }
 
+const COACH_TOOLS = [
+  { name: 'get_recent_workouts', description: 'Get the user\'s most recent workouts with exercises, sets, reps, weights, and effort ratings. Returns up to N workouts sorted by date descending.', input_schema: { type: 'object', properties: { n: { type: 'integer', description: 'Number of recent workouts to return (default 5, max 20)' } }, required: [] } },
+  { name: 'get_exercise_history', description: 'Get the user\'s history for a specific exercise across all past workouts. Returns each session\'s sets with weight, reps, and effort.', input_schema: { type: 'object', properties: { exercise_name: { type: 'string', description: 'Exact exercise name to look up' }, n: { type: 'integer', description: 'Max number of sessions to return (default 10)' } }, required: ['exercise_name'] } },
+  { name: 'get_personal_records', description: 'Get the user\'s personal records (best volume = weight x reps) for each exercise they\'ve performed.', input_schema: { type: 'object', properties: {}, required: [] } },
+  { name: 'get_body_weight', description: 'Get the user\'s recent body weight log entries.', input_schema: { type: 'object', properties: { n: { type: 'integer', description: 'Number of recent entries (default 10)' } }, required: [] } },
+  { name: 'get_week_plan', description: 'Get the user\'s current weekly workout schedule showing which preset is assigned to each day.', input_schema: { type: 'object', properties: {}, required: [] } },
+  { name: 'get_presets', description: 'Get all workout presets with their exercises and default sets.', input_schema: { type: 'object', properties: {}, required: [] } },
+  { name: 'search_exercises', description: 'Search available exercises by name or muscle group. Returns matching exercise names and their muscle group.', input_schema: { type: 'object', properties: { query: { type: 'string', description: 'Search term (exercise name or muscle group like Chest, Back, Legs, Shoulders, Arms, Core)' } }, required: ['query'] } },
+  { name: 'get_workout_stats', description: 'Get summary statistics: total workouts, workouts this week/month, average duration, most trained muscle groups.', input_schema: { type: 'object', properties: {}, required: [] } },
+];
+
+function resolveCoachTool(name, input) {
+  switch (name) {
+    case 'get_recent_workouts': {
+      const n = Math.min(input.n || 5, 20);
+      return state.workoutHistory.slice(0, n).map(w => ({
+        date: w.date, presetName: w.presetName, durationMinutes: w.durationMinutes,
+        exercises: w.exercises.map(ex => ({
+          name: ex.exerciseName,
+          sets: ex.sets.map(s => ({ weight: s.weight, reps: s.reps, effort: s.effort || '' })),
+        })),
+      }));
+    }
+    case 'get_exercise_history': {
+      const n = Math.min(input.n || 10, 30);
+      const results = [];
+      for (const w of state.workoutHistory) {
+        const ex = w.exercises.find(e => e.exerciseName === input.exercise_name);
+        if (ex) {
+          results.push({ date: w.date, sets: ex.sets.map(s => ({ weight: s.weight, reps: s.reps, effort: s.effort || '' })) });
+          if (results.length >= n) break;
+        }
+      }
+      return results;
+    }
+    case 'get_personal_records': {
+      const prs = {};
+      state.workoutHistory.forEach(w => {
+        w.exercises.forEach(ex => {
+          ex.sets.forEach(s => {
+            const vol = s.weight * s.reps;
+            if (!prs[ex.exerciseName] || vol > prs[ex.exerciseName].volume) {
+              prs[ex.exerciseName] = { volume: vol, weight: s.weight, reps: s.reps, date: w.date };
+            }
+          });
+        });
+      });
+      return prs;
+    }
+    case 'get_body_weight': {
+      const n = Math.min(input.n || 10, 30);
+      return state.weightLog.slice(0, n).map(e => ({ date: e.date, weight: e.weight, unit: e.unit }));
+    }
+    case 'get_week_plan': {
+      const plan = {};
+      for (let i = 0; i < 7; i++) {
+        const pid = state.weekPlan[i];
+        const preset = pid ? state.presets.find(p => p.id === pid) : null;
+        plan[DAY_NAMES[i]] = preset ? preset.name : 'Rest';
+      }
+      return plan;
+    }
+    case 'get_presets': {
+      return state.presets.map(p => ({ name: p.name, exercises: p.exercises.map(e => ({ name: e.exerciseName, defaultSets: e.defaultSets })) }));
+    }
+    case 'search_exercises': {
+      const q = (input.query || '').toLowerCase();
+      return state.exercises.filter(e => e.name.toLowerCase().includes(q) || e.muscleGroup.toLowerCase().includes(q))
+        .slice(0, 30).map(e => ({ name: e.name, muscleGroup: e.muscleGroup }));
+    }
+    case 'get_workout_stats': {
+      const now = new Date();
+      const weekAgo = new Date(now - 7 * 86400000);
+      const monthAgo = new Date(now - 30 * 86400000);
+      const thisWeek = state.workoutHistory.filter(w => new Date(w.date) >= weekAgo).length;
+      const thisMonth = state.workoutHistory.filter(w => new Date(w.date) >= monthAgo).length;
+      const durations = state.workoutHistory.filter(w => w.durationMinutes > 0).map(w => w.durationMinutes);
+      const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
+      const groups = {};
+      state.workoutHistory.forEach(w => w.exercises.forEach(ex => {
+        const mg = (state.exercises.find(e => e.name === ex.exerciseName) || {}).muscleGroup || 'Other';
+        groups[mg] = (groups[mg] || 0) + 1;
+      }));
+      return { total: state.workoutHistory.length, thisWeek, thisMonth, avgDurationMinutes: avgDur, exercisesByMuscleGroup: groups };
+    }
+    default: return { error: 'Unknown tool' };
+  }
+}
+
+// apiMessages tracks the full conversation for the API (includes tool_use/tool_result blocks)
+let apiMessages = [];
+
 async function sendChat() {
   const inp = document.getElementById('chat-input');
   const text = inp.value.trim();
   if (!text) return;
 
   chatMessages.push({ role: 'user', content: text });
+  apiMessages.push({ role: 'user', content: text });
   inp.value = '';
   renderChat();
 
@@ -1625,37 +1718,62 @@ async function sendChat() {
   btn.disabled = true;
   btn.textContent = '...';
 
-  const apiMessages = chatMessages.filter(m => m.role !== 'error').map(m => ({ role: m.role, content: m.content }));
-
   try {
+    await coachLoop(btn);
+  } catch (e) {
+    chatMessages.push({ role: 'error', content: 'Network error: ' + e.message });
+  }
+  btn.disabled = false;
+  btn.textContent = 'Send';
+  renderChat();
+}
+
+async function coachLoop(btn) {
+  const maxRounds = 5;
+  for (let round = 0; round < maxRounds; round++) {
     const resp = await fetch(WORKER_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': settings.anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': settings.anthropicKey, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: settings.anthropicModel || 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
-        system: 'You are a concise, knowledgeable fitness coach inside a gym tracking app called Iron Log. Give brief, actionable advice about exercises, form, programming, nutrition, and recovery. Keep responses short (2-4 sentences) unless the user asks for detail.',
+        system: 'You are a concise, knowledgeable fitness coach inside a gym tracking app called Iron Log. You have tools to access the user\'s workout history, body weight, schedule, and exercise database. Use these tools to give personalized, data-driven advice. Keep responses short (2-4 sentences) unless the user asks for detail. Always fetch relevant data before answering questions about the user\'s training.',
+        tools: COACH_TOOLS,
         messages: apiMessages,
       }),
     });
     const r = await resp.json();
-    btn.disabled = false;
-    btn.textContent = 'Send';
-    if (r.content && r.content.length) {
-      chatMessages.push({ role: 'assistant', content: r.content.map(b => b.text).join('') });
-    } else {
-      chatMessages.push({ role: 'error', content: r.error ? (r.error.message || JSON.stringify(r.error)) : 'Unknown error: ' + JSON.stringify(r) });
+    if (r.error) {
+      chatMessages.push({ role: 'error', content: r.error.message || JSON.stringify(r.error) });
+      return;
     }
-  } catch (e) {
-    btn.disabled = false;
-    btn.textContent = 'Send';
-    chatMessages.push({ role: 'error', content: 'Network error: ' + e.message });
+    if (!r.content) {
+      chatMessages.push({ role: 'error', content: 'Empty response from AI' });
+      return;
+    }
+
+    // Add assistant response to API messages
+    apiMessages.push({ role: 'assistant', content: r.content });
+
+    if (r.stop_reason === 'tool_use') {
+      // Resolve all tool calls
+      const toolResults = [];
+      for (const block of r.content) {
+        if (block.type === 'tool_use') {
+          const result = resolveCoachTool(block.name, block.input);
+          toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(result) });
+        }
+      }
+      apiMessages.push({ role: 'user', content: toolResults });
+      // Continue loop for next round
+    } else {
+      // Extract text from response
+      const text = r.content.filter(b => b.type === 'text').map(b => b.text).join('');
+      if (text) chatMessages.push({ role: 'assistant', content: text });
+      return;
+    }
   }
-  renderChat();
+  chatMessages.push({ role: 'error', content: 'Too many tool rounds' });
 }
 
 // ============================================
