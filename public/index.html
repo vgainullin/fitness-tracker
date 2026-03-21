@@ -1733,12 +1733,28 @@ function resolveCoachTool(name, input) {
 // apiMessages tracks the full conversation for the API (includes tool_use/tool_result blocks)
 let apiMessages = [];
 
+function trimApiMessages() {
+  // Keep last 20 messages (user + assistant text pairs), drop older tool roundtrips
+  if (apiMessages.length <= 20) return;
+  // Find a safe trim point: only cut before a user message with string content (not tool_result)
+  const cutTarget = apiMessages.length - 20;
+  let cutAt = 0;
+  for (let i = cutTarget; i >= 0; i--) {
+    if (apiMessages[i].role === 'user' && typeof apiMessages[i].content === 'string') {
+      cutAt = i;
+      break;
+    }
+  }
+  if (cutAt > 0) apiMessages = apiMessages.slice(cutAt);
+}
+
 async function sendChat() {
   const inp = document.getElementById('chat-input');
   const text = inp.value.trim();
   if (!text) return;
 
   chatMessages.push({ role: 'user', content: text });
+  trimApiMessages();
   apiMessages.push({ role: 'user', content: text });
   inp.value = '';
   renderChat();
