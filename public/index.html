@@ -99,6 +99,9 @@
 
   .add-set-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 12px; margin-top: 8px; background: none; border: 1px dashed var(--border); border-radius: 8px; color: var(--text-dim); font-family: var(--font); font-size: 14px; cursor: pointer; }
   .add-set-btn:active { background: var(--bg-2); color: var(--text); }
+  .exercise-comment { width: 100%; background: var(--bg-1); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--font); font-size: 13px; padding: 8px 10px; resize: vertical; min-height: 36px; margin-top: 8px; }
+  .exercise-comment::placeholder { color: var(--text-faint); }
+  .exercise-comment-display { font-size: 13px; color: var(--text-dim); padding: 6px 0; font-style: italic; }
 
   .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 20px; }
   .day-cell { background: var(--bg-1); border: 1px solid var(--border); border-radius: 10px; padding: 8px 4px; text-align: center; cursor: pointer; transition: all 0.15s; min-height: 80px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -1135,7 +1138,7 @@ async function finishWorkout() {
   const dur = Math.round((Date.now()-w.startTime)/60000);
   const finished = {
     id:w.id, date:new Date(w.startTime).toISOString(), durationMinutes:dur, presetName:w.presetName||null,
-    exercises:w.exercises.map(ex=>({exerciseId:ex.exerciseId,exerciseName:ex.exerciseName,
+    exercises:w.exercises.map(ex=>({exerciseId:ex.exerciseId,exerciseName:ex.exerciseName,comment:ex.comment||'',
       sets:ex.sets.map(s=>({id:s.id, weight:s.weight, reps:s.reps, effort:s.effort||''}))})),
   };
   const prs = detectPRs(finished);
@@ -1199,7 +1202,7 @@ function selectExercise(eid,ename) {
   if(!state.currentWorkout) return;
   if(state.currentWorkout.exercises.find(e=>e.exerciseId===eid)){closeOverlay('exercise-picker');toast('Already added');return;}
   const prev = getPreviousBest(ename);
-  state.currentWorkout.exercises.push({exerciseId:eid,exerciseName:ename,sets:[{id:'set_'+Date.now().toString(36),weight:prev.weight,reps:prev.reps,effort:''}]});
+  state.currentWorkout.exercises.push({exerciseId:eid,exerciseName:ename,comment:'',sets:[{id:'set_'+Date.now().toString(36),weight:prev.weight,reps:prev.reps,effort:''}]});
   closeOverlay('exercise-picker');renderWorkout();
 }
 function showAddCustomExercise() {
@@ -1213,7 +1216,7 @@ function addCustomExercise() {
   const id='ex_'+Date.now().toString(36);
   state.exercises.push({id,name,muscleGroup:group});
   closeOverlay('custom-exercise-overlay');
-  if(state.currentWorkout){state.currentWorkout.exercises.push({exerciseId:id,exerciseName:name,sets:[]});renderWorkout();}
+  if(state.currentWorkout){state.currentWorkout.exercises.push({exerciseId:id,exerciseName:name,comment:'',sets:[]});renderWorkout();}
   toast(name+' added');
 }
 
@@ -1246,6 +1249,7 @@ function renderWorkout() {
     });
     const ls=ex.sets.length>0?ex.sets[ex.sets.length-1]:null;
     const pw=ls?ls.weight:0, pr=ls?ls.reps:0;
+    h+='<textarea class="exercise-comment" rows="1" placeholder="Notes..." onchange="updateExerciseComment('+xi+',this.value)">'+(ex.comment||'').replace(/</g,'&lt;')+'</textarea>';
     h+='<button class="add-set-btn" onclick="addSet('+xi+','+pw+','+pr+')">+ Add Set</button></div>';
   });
   if(!state.currentWorkout.exercises.length) h='<div class="empty-state mt-20"><p class="dim">No exercises yet. Add one below.</p></div>';
@@ -1260,6 +1264,7 @@ function updateSet(xi,si,field,val) {
   if(field==='effort') state.currentWorkout.exercises[xi].sets[si][field]=val;
   else state.currentWorkout.exercises[xi].sets[si][field]=parseFloat(val)||0;
 }
+function updateExerciseComment(xi,val){state.currentWorkout.exercises[xi].comment=val;}
 function removeSet(xi,si){state.currentWorkout.exercises[xi].sets.splice(si,1);renderWorkout();}
 function removeExercise(xi){state.currentWorkout.exercises.splice(xi,1);renderWorkout();}
 let pendingRemoveExercise = null;
@@ -1306,6 +1311,7 @@ function showWorkoutDetail(idx) {
       const es=s.effort==='light'?'color:var(--green)':s.effort==='hard'?'color:var(--red)':s.effort==='good'?'color:var(--accent)':'color:var(--text-faint)';
       h+='<div class="set-row"><span class="set-num">'+(i+1)+'</span><span class="mono" style="text-align:center;font-size:16px">'+s.weight+'</span><span class="mono" style="text-align:center;font-size:16px">'+s.reps+'</span><span style="text-align:center;font-size:13px;font-weight:500;'+es+'">'+el+'</span><span></span></div>';
     });
+    if(ex.comment) h+='<div class="exercise-comment-display">'+ex.comment.replace(/</g,'&lt;')+'</div>';
     h+='</div>';
   });
   document.getElementById('workout-detail-content').innerHTML=h;
