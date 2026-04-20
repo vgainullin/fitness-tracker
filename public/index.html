@@ -1069,6 +1069,23 @@ function getPreviousSession(exerciseName) {
   return null;
 }
 
+function getExerciseTrend(exerciseName, workoutIdx) {
+  const currEx = state.workoutHistory[workoutIdx].exercises.find(e => e.exerciseName === exerciseName);
+  if (!currEx) return null;
+  const currVol = Math.max(0, ...currEx.sets.map(s => s.weight * s.reps));
+  if (currVol <= 0) return null;
+  for (let i = workoutIdx + 1; i < state.workoutHistory.length; i++) {
+    const prevEx = state.workoutHistory[i].exercises.find(e => e.exerciseName === exerciseName);
+    if (!prevEx) continue;
+    const prevVol = Math.max(0, ...prevEx.sets.map(s => s.weight * s.reps));
+    if (prevVol <= 0) continue;
+    if (currVol > prevVol) return 'up';
+    if (currVol < prevVol) return 'down';
+    return 'flat';
+  }
+  return null;
+}
+
 function detectPRs(workout) {
   const prs = [];
   workout.exercises.forEach(ex => {
@@ -1321,7 +1338,12 @@ function showWorkoutDetail(idx) {
   let h='<div class="dim small mb-16">'+(w.durationMinutes||'--')+' minutes'+(w.presetName?' -- '+w.presetName:'')+'</div>';
   w.exercises.forEach(ex=>{
     const mg = (state.exercises.find(e=>e.id===ex.exerciseId)||{}).muscleGroup||'Other';
-    h+='<div class="exercise-block mb-16"><div class="flex items-center gap-8 mb-8">'+pixelArtSVG(mg,20)+'<h3>'+youtubeLink(ex.exerciseName)+'</h3></div>';
+    const trend = getExerciseTrend(ex.exerciseName, idx);
+    const trendHtml = trend==='up' ? '<span style="color:var(--green);font-size:15px;margin-left:6px;line-height:1;">↑</span>'
+                    : trend==='down' ? '<span style="color:var(--red);font-size:15px;margin-left:6px;line-height:1;">↓</span>'
+                    : trend==='flat' ? '<span style="color:var(--text-faint);font-size:15px;margin-left:6px;line-height:1;">→</span>'
+                    : '';
+    h+='<div class="exercise-block mb-16"><div class="flex items-center gap-8 mb-8">'+pixelArtSVG(mg,20)+'<h3>'+youtubeLink(ex.exerciseName)+trendHtml+'</h3></div>';
     h+='<div class="set-row header"><span>Set</span><span style="text-align:center">Wt</span><span style="text-align:center">Reps</span><span style="text-align:center">Effort</span><span></span></div>';
     ex.sets.forEach((s,i)=>{
       const el=s.effort?s.effort.charAt(0).toUpperCase()+s.effort.slice(1):'--';
