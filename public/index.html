@@ -312,6 +312,13 @@
       <div><h2>Workout</h2><div class="workout-timer mt-8" id="workout-timer">00:00</div></div>
       <button class="btn-danger" onclick="confirmFinish()">Finish</button>
     </div>
+    <div id="preset-replace-confirm" style="display:none;" class="card mb-12">
+      <p class="small mb-12" style="text-align:center;" id="preset-replace-msg"></p>
+      <div class="flex gap-8">
+        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="declinePresetSave()">This session only</button>
+        <button class="btn btn-sm" style="flex:1;background:var(--accent);color:#0a0a0a;" onclick="confirmPresetSave()">Save to preset</button>
+      </div>
+    </div>
     <div id="finish-confirm" style="display:none;" class="card mb-12">
       <p class="small mb-12" style="text-align:center;" id="finish-confirm-msg">Finish this workout?</p>
       <div class="flex gap-8">
@@ -937,9 +944,14 @@ function renderAll() {
 // INIT
 // ============================================
 
+async function savePresets() {
+  await dbSet('presets', state.presets);
+}
+
 async function init() {
   await loadSettings();
   await loadExerciseDb();
+  state.presets = await dbGet('presets') || [...DEFAULT_PRESETS];
   renderGate();
 }
 
@@ -1323,11 +1335,54 @@ function renderExerciseList(exercises) {
 }
 function selectExercise(eid,ename) {
   if(!state.currentWorkout) return;
+  if (pendingPresetReplace) {
+    const {xi, oldName, presetId} = pendingPresetReplace;
+    pendingPresetReplace = null;
+    closeOverlay('exercise-picker');
+    const prevSets = getPreviousSession(ename);
+    const fallback = getPreviousBest(ename);
+    const sets = state.currentWorkout.exercises[xi].sets.map((_,i) => {
+      const p = prevSets && prevSets[i] ? prevSets[i] : fallback;
+      return {id:'set_'+Date.now().toString(36)+'_'+i, weight:p.weight, reps:p.reps, effort:''};
+    });
+    state.currentWorkout.exercises[xi] = {exerciseId:eid, exerciseName:ename, comment:'', sets};
+    renderWorkout();
+    const preset = state.presets.find(p=>p.id===presetId);
+    if (preset) {
+      pendingPresetReplace = {xi, oldName, presetId, newEid:eid, newName:ename};
+      document.getElementById('preset-replace-msg').textContent = 'Save "'+ename+'" to '+preset.name+'?';
+      document.getElementById('preset-replace-confirm').style.display = 'block';
+    }
+    return;
+  }
   if(state.currentWorkout.exercises.find(e=>e.exerciseId===eid)){closeOverlay('exercise-picker');toast('Already added');return;}
   const prevSets = getPreviousSession(ename);
   const prev = prevSets && prevSets[0] ? prevSets[0] : getPreviousBest(ename);
   state.currentWorkout.exercises.push({exerciseId:eid,exerciseName:ename,comment:'',sets:[{id:'set_'+Date.now().toString(36),weight:prev.weight,reps:prev.reps,effort:''}]});
   closeOverlay('exercise-picker');renderWorkout();
+}
+
+function startPresetReplace(xi, oldName) {
+  const preset = state.presets.find(p=>p.name===state.currentWorkout?.presetName);
+  pendingPresetReplace = {xi, oldName, presetId: preset?.id};
+  openExercisePicker();
+}
+
+async function confirmPresetSave() {
+  const {oldName, presetId, newEid, newName} = pendingPresetReplace || {};
+  pendingPresetReplace = null;
+  document.getElementById('preset-replace-confirm').style.display = 'none';
+  const preset = state.presets.find(p=>p.id===presetId);
+  if (!preset) return;
+  const ei = preset.exercises.findIndex(e=>e.exerciseName===oldName);
+  if (ei !== -1) { preset.exercises[ei] = {exerciseName:newName, defaultSets:preset.exercises[ei].defaultSets}; }
+  await savePresets();
+  toast(newName+' saved to '+preset.name);
+}
+
+function declinePresetSave() {
+  pendingPresetReplace = null;
+  document.getElementById('preset-replace-confirm').style.display = 'none';
 }
 function showAddCustomExercise() {
   closeOverlay('exercise-picker');document.getElementById('custom-ex-name').value='';
@@ -1356,10 +1411,13 @@ function renderWorkout() {
   const pillsOpen=document.getElementById('core-pills')?.classList.contains('open');
   if(pillsOpen)renderCorePills();
   let h='';
+  const activePreset = state.currentWorkout.presetName ? state.presets.find(p=>p.name===state.currentWorkout.presetName) : null;
   state.currentWorkout.exercises.forEach((ex,xi)=>{
     const tip = getExerciseTip(ex.exerciseName);
     const mg = (state.exercises.find(e=>e.id===ex.exerciseId)||{}).muscleGroup||'Other';
-    h+='<div class="exercise-block card mb-12"><div class="exercise-block-header">'+pixelArtSVG(mg,20)+'<h3 style="margin-left:8px;flex:1;">'+youtubeLink(ex.exerciseName)+'</h3><button class="btn-ghost" onclick="confirmRemoveExercise('+xi+')" style="color:var(--text-faint);font-size:12px;">Remove</button></div>';
+    const inPreset = activePreset && activePreset.exercises.some(e=>e.exerciseName===ex.exerciseName);
+    const replaceBtn = inPreset ? '<button class="btn-ghost" onclick="startPresetReplace('+xi+',\''+ex.exerciseName.replace(/'/g,"\\'")+'\')" style="color:var(--text-dim);font-size:12px;">Replace</button>' : '';
+    h+='<div class="exercise-block card mb-12"><div class="exercise-block-header">'+pixelArtSVG(mg,20)+'<h3 style="margin-left:8px;flex:1;">'+youtubeLink(ex.exerciseName)+'</h3>'+replaceBtn+'<button class="btn-ghost" onclick="confirmRemoveExercise('+xi+')" style="color:var(--text-faint);font-size:12px;">Remove</button></div>';
     if (tip) {
       h+='<div id="tip-'+xi+'" style="display:none;" class="tip-text">'+tip+'</div>';
       h+='<button class="tip-toggle" onclick="var el=document.getElementById(\'tip-'+xi+'\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Form tip</button>';
@@ -1429,6 +1487,7 @@ function updateExerciseComment(xi,val){state.currentWorkout.exercises[xi].commen
 function removeSet(xi,si){state.currentWorkout.exercises[xi].sets.splice(si,1);renderWorkout();}
 function removeExercise(xi){state.currentWorkout.exercises.splice(xi,1);renderWorkout();}
 let pendingRemoveExercise = null;
+let pendingPresetReplace = null; // { xi, oldName, presetId, newEid, newName }
 function confirmRemoveExercise(xi){
   if (pendingRemoveExercise === xi) { removeExercise(xi); pendingRemoveExercise = null; return; }
   pendingRemoveExercise = xi;
