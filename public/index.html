@@ -946,22 +946,31 @@ function switchTab(name, btn) {
 
 function renderHome() { renderTodayPlan(); renderWeekGrid(); renderMuscleHeatmap(); renderPresetsList(); renderRecentWorkouts(); }
 
-function renderMuscleHeatmap() {
-  const GROUPS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core'];
+const MUSCLE_GROUPS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core'];
+
+function getMuscleRecency() {
   const now = Date.now();
   const lastTrained = {};
   for (const w of state.workoutHistory) {
     const wDate = new Date(w.date).getTime();
     for (const ex of w.exercises) {
       const mg = (state.exercises.find(e => e.id === ex.exerciseId) || {}).muscleGroup;
-      if (mg && GROUPS.includes(mg) && !lastTrained[mg]) lastTrained[mg] = wDate;
+      if (mg && MUSCLE_GROUPS.includes(mg) && !lastTrained[mg]) lastTrained[mg] = wDate;
     }
-    if (Object.keys(lastTrained).length === GROUPS.length) break;
+    if (Object.keys(lastTrained).length === MUSCLE_GROUPS.length) break;
   }
+  const result = {};
+  MUSCLE_GROUPS.forEach(g => {
+    result[g] = lastTrained[g] !== undefined ? Math.floor((now - lastTrained[g]) / 86400000) : null;
+  });
+  return result;
+}
+
+function renderMuscleHeatmap() {
+  const recency = getMuscleRecency();
   let h = '<div class="muscle-heatmap">';
-  GROUPS.forEach(g => {
-    const t = lastTrained[g];
-    const days = t !== undefined ? Math.floor((now - t) / 86400000) : null;
+  MUSCLE_GROUPS.forEach(g => {
+    const days = recency[g];
     const fresh = days !== null && days <= 2;
     const stale = days !== null && days >= 7;
     const color = days === null ? 'var(--text-faint)' : fresh ? 'var(--green)' : stale ? 'var(--red)' : 'var(--accent)';
@@ -1014,8 +1023,16 @@ function renderWeekGrid() {
 
 function renderPresetsList() {
   const c = document.getElementById('presets-list');
+  const recency = getMuscleRecency();
+  const scored = state.presets.map(p => {
+    const groups = [...new Set(p.exercises.map(e => {
+      return (state.exercises.find(x => x.name === e.exerciseName) || {}).muscleGroup;
+    }).filter(Boolean))];
+    const score = Math.max(0, ...groups.map(g => recency[g] !== null ? recency[g] : 999));
+    return { p, score };
+  }).sort((a, b) => b.score - a.score);
   let h = '';
-  state.presets.forEach(p => {
+  scored.forEach(({ p }) => {
     const ts = p.exercises.reduce((s,e)=>s+e.defaultSets,0);
     h += '<div class="card preset-card" onclick="showPresetDetail(\''+p.id+'\')"><div class="preset-dot '+p.color+'"></div><div class="preset-info"><h3>'+p.name+'</h3><p>'+p.exercises.length+' exercises · '+ts+' sets</p></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>';
   });
