@@ -755,6 +755,11 @@ async function onGoogleToken(resp) {
   document.getElementById('weight-unit-btn').textContent = settings.weightUnit;
   await loadCharacter();
   renderAll();
+  if (state.currentWorkout) {
+    startTimer();
+    switchTab('workout', document.querySelectorAll('nav button')[1]);
+    toast('Workout restored');
+  }
   flushPendingWorkouts();
 }
 
@@ -948,10 +953,16 @@ async function savePresets() {
   await dbSet('presets', state.presets);
 }
 
+function saveCurrentWorkout() {
+  dbSet('currentWorkout', state.currentWorkout);
+}
+
 async function init() {
   await loadSettings();
   await loadExerciseDb();
   state.presets = await dbGet('presets') || [...DEFAULT_PRESETS];
+  const saved = await dbGet('currentWorkout');
+  if (saved) { state.currentWorkout = saved; }
   renderGate();
 }
 
@@ -1278,6 +1289,7 @@ async function finishWorkout() {
   };
   const prs = detectPRs(finished);
   state.currentWorkout=null;
+  dbSet('currentWorkout', null);
   document.getElementById('finish-confirm').style.display='none';
   switchTab('home', document.querySelectorAll('nav button')[0]);
 
@@ -1299,6 +1311,7 @@ async function finishWorkout() {
 
 function discardWorkout() {
   clearInterval(timerInterval); state.currentWorkout=null;
+  dbSet('currentWorkout', null);
   document.getElementById('finish-confirm').style.display='none';
   switchTab('home', document.querySelectorAll('nav button')[0]); toast('Workout discarded');
 }
@@ -1408,6 +1421,7 @@ function renderWorkout() {
   const coreBonus=document.getElementById('core-bonus');
   if(!state.currentWorkout){c.innerHTML='<div class="empty-state"><p>No active workout</p><button class="btn btn-primary" onclick="startWorkout()">Start Workout</button></div>';if(coreBonus)coreBonus.style.display='none';return;}
   if(coreBonus)coreBonus.style.display='';
+  saveCurrentWorkout();
   const pillsOpen=document.getElementById('core-pills')?.classList.contains('open');
   if(pillsOpen)renderCorePills();
   let h='';
@@ -1482,8 +1496,9 @@ function addSet(xi,pw,pr) {
 function updateSet(xi,si,field,val) {
   if(field==='effort') state.currentWorkout.exercises[xi].sets[si][field]=val;
   else state.currentWorkout.exercises[xi].sets[si][field]=parseFloat(val)||0;
+  saveCurrentWorkout();
 }
-function updateExerciseComment(xi,val){state.currentWorkout.exercises[xi].comment=val;}
+function updateExerciseComment(xi,val){state.currentWorkout.exercises[xi].comment=val;saveCurrentWorkout();}
 function removeSet(xi,si){state.currentWorkout.exercises[xi].sets.splice(si,1);renderWorkout();}
 function removeExercise(xi){state.currentWorkout.exercises.splice(xi,1);renderWorkout();}
 let pendingRemoveExercise = null;
