@@ -1009,13 +1009,26 @@ function renderTodayPlan() {
 
 function renderWeekGrid() {
   const g = document.getElementById('week-grid');
-  const today = new Date().getDay();
+  const now = new Date();
+  const today = now.getDay();
+  const weekStart = new Date(now);
+  weekStart.setHours(0,0,0,0);
+  weekStart.setDate(now.getDate() - today);
   let h = '';
   for (let i=0;i<7;i++) {
     const pid = state.weekPlan[i];
     const preset = pid ? state.presets.find(p=>p.id===pid) : null;
+    const dayStart = new Date(weekStart); dayStart.setDate(weekStart.getDate() + i);
+    const dayEnd = new Date(dayStart); dayEnd.setDate(dayStart.getDate() + 1);
+    const done = state.workoutHistory.find(w => { const d = new Date(w.date); return d >= dayStart && d < dayEnd; });
     h += '<div class="day-cell '+(i===today?'today':'')+'" onclick="openDayAssign('+i+')"><span class="day-label">'+DAY_NAMES[i]+'</span>';
-    h += preset ? '<span class="day-preset '+preset.color+'">'+preset.name+'</span>' : '<span class="day-rest">Rest</span>';
+    if (done) {
+      const color = preset ? preset.color : 'custom';
+      const name = done.presetName || 'Workout';
+      h += '<span class="day-preset '+color+'" style="position:relative;">'+name+'</span>';
+    } else {
+      h += preset ? '<span class="day-preset '+preset.color+'">'+preset.name+'</span>' : '<span class="day-rest">Rest</span>';
+    }
     h += '</div>';
   }
   g.innerHTML = h;
