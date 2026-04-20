@@ -101,6 +101,11 @@
 
   .add-set-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 12px; margin-top: 8px; background: none; border: 1px dashed var(--border); border-radius: 8px; color: var(--text-dim); font-family: var(--font); font-size: 14px; cursor: pointer; }
   .add-set-btn:active { background: var(--bg-2); color: var(--text); }
+
+  .muscle-heatmap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 20px; }
+  .muscle-pill { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 6px; border-radius: 10px; border: 1px solid transparent; }
+  .muscle-pill-name { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .muscle-pill-days { font-size: 14px; font-weight: 700; font-family: var(--mono); }
   .exercise-comment { width: 100%; background: var(--bg-1); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--font); font-size: 13px; padding: 8px 10px; resize: vertical; min-height: 36px; margin-top: 8px; }
   .exercise-comment::placeholder { color: var(--text-faint); }
   .exercise-comment-display { font-size: 13px; color: var(--text-dim); padding: 6px 0; font-style: italic; }
@@ -281,6 +286,8 @@
     <div id="today-plan" class="mb-20"></div>
     <div class="flex items-center justify-between mb-12"><h3 class="dim">This Week</h3></div>
     <div class="week-grid" id="week-grid"></div>
+    <div class="flex items-center justify-between mb-12"><h3 class="dim">Muscle Groups</h3></div>
+    <div id="muscle-heatmap"></div>
     <div class="flex items-center justify-between mb-12"><h3 class="dim">Session Presets</h3></div>
     <div id="presets-list"></div>
     <div class="mt-20">
@@ -937,7 +944,34 @@ function switchTab(name, btn) {
 // HOME
 // ============================================
 
-function renderHome() { renderTodayPlan(); renderWeekGrid(); renderPresetsList(); renderRecentWorkouts(); }
+function renderHome() { renderTodayPlan(); renderWeekGrid(); renderMuscleHeatmap(); renderPresetsList(); renderRecentWorkouts(); }
+
+function renderMuscleHeatmap() {
+  const GROUPS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core'];
+  const now = Date.now();
+  const lastTrained = {};
+  for (const w of state.workoutHistory) {
+    const wDate = new Date(w.date).getTime();
+    for (const ex of w.exercises) {
+      const mg = (state.exercises.find(e => e.id === ex.exerciseId) || {}).muscleGroup;
+      if (mg && GROUPS.includes(mg) && !lastTrained[mg]) lastTrained[mg] = wDate;
+    }
+    if (Object.keys(lastTrained).length === GROUPS.length) break;
+  }
+  let h = '<div class="muscle-heatmap">';
+  GROUPS.forEach(g => {
+    const t = lastTrained[g];
+    const days = t !== undefined ? Math.floor((now - t) / 86400000) : null;
+    const fresh = days !== null && days <= 2;
+    const stale = days !== null && days >= 7;
+    const color = days === null ? 'var(--text-faint)' : fresh ? 'var(--green)' : stale ? 'var(--red)' : 'var(--accent)';
+    const bg    = days === null ? 'var(--bg-1)' : fresh ? 'rgba(90,173,106,0.1)' : stale ? 'rgba(212,80,80,0.1)' : 'rgba(232,168,76,0.1)';
+    const label = days === null ? '--' : days === 0 ? 'today' : days + 'd ago';
+    h += '<div class="muscle-pill" style="background:'+bg+';border-color:'+color+'"><span class="muscle-pill-name" style="color:'+color+'">'+g+'</span><span class="muscle-pill-days" style="color:'+color+'">'+label+'</span></div>';
+  });
+  h += '</div>';
+  document.getElementById('muscle-heatmap').innerHTML = h;
+}
 
 function getPresetColorVar(color) {
   return color==='push'?'--red':color==='pull'?'--blue':color==='legs'?'--green':color==='upper'?'--purple':'--accent';
