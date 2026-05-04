@@ -1368,13 +1368,29 @@ async function finishWorkout() {
     toast('Workout saved -- '+dur+' min');
     if (prs.length) showPRCelebration(prs);
   } catch(e) {
-    // stash locally so it can be retried on next auth
-    const pending = await dbGet('pendingWorkouts') || [];
-    pending.push(finished);
-    await dbSet('pendingWorkouts', pending);
-    toast('Saved offline -- will sync when reconnected', true);
+    let stashed = false;
+    try {
+      const pending = await dbGet('pendingWorkouts') || [];
+      pending.push(finished);
+      await dbSet('pendingWorkouts', pending);
+      stashed = true;
+    } catch(_) {}
+    try { downloadWorkoutBackup(finished); } catch(_) {}
+    toast('Sync failed: '+e.message+' -- backup downloaded'+(stashed?' + saved on device':''), true);
     if (prs.length) showPRCelebration(prs);
   }
+}
+
+function downloadWorkoutBackup(workout) {
+  const stamp = new Date(workout.date).toISOString().replace(/[:.]/g,'-').slice(0,19);
+  const safeName = (workout.presetName || 'workout').replace(/[^a-z0-9]/gi,'-').toLowerCase();
+  const blob = new Blob([JSON.stringify(workout, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ironlog-' + stamp + '-' + safeName + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 function discardWorkout() {
