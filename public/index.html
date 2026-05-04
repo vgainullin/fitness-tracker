@@ -390,6 +390,8 @@
     </div>
     <div class="settings-section">
       <h3>Data</h3>
+      <button class="btn btn-secondary btn-sm btn-full mb-8" onclick="backupSpreadsheet()">Back up Spreadsheet (Drive copy)</button>
+      <div id="backup-status" class="small mb-8"></div>
       <button class="btn btn-secondary btn-sm btn-full" onclick="exportData()">Export Data (JSON)</button>
     </div>
   </div>
@@ -2208,6 +2210,28 @@ async function saveAnthropicKey() {
 function exportData() {
   const b = new Blob([JSON.stringify({workoutHistory:state.workoutHistory,weightLog:state.weightLog},null,2)],{type:'application/json'});
   const a = document.createElement('a'); a.href=URL.createObjectURL(b); a.download='ironlog-'+new Date().toISOString().slice(0,10)+'.json'; a.click(); toast('Exported');
+}
+
+async function backupSpreadsheet() {
+  const el = document.getElementById('backup-status');
+  if (!gtoken || !settings.spreadsheetId) { if (el) el.innerHTML = '<span style="color:var(--red)">Not signed in</span>'; return; }
+  const stamp = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  const name = 'Iron Log Data backup ' + stamp;
+  if (el) el.innerHTML = '<span class="dim">Creating backup...</span>';
+  try {
+    const resp = await fetch('https://www.googleapis.com/drive/v3/files/' + settings.spreadsheetId + '/copy', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + gtoken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+    if (el) el.innerHTML = '<span style="color:var(--green)">Backup saved as &ldquo;' + name + '&rdquo; in your Drive.</span>';
+    toast('Backup created');
+  } catch(e) {
+    if (el) el.innerHTML = '<span style="color:var(--red)">Backup failed: ' + e.message + '</span>';
+    toast('Backup failed', true);
+  }
 }
 
 // ============================================
