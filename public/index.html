@@ -392,7 +392,10 @@
       <h3>Data</h3>
       <button class="btn btn-secondary btn-sm btn-full mb-8" onclick="backupSpreadsheet()">Back up Spreadsheet (Drive copy)</button>
       <div id="backup-status" class="small mb-8"></div>
-      <button class="btn btn-secondary btn-sm btn-full" onclick="exportData()">Export Data (JSON)</button>
+      <button class="btn btn-secondary btn-sm btn-full mb-8" onclick="exportData()">Export Data (JSON)</button>
+      <p class="small dim mb-8">One-time migration to a flat, manual-entry friendly schema (single Sets tab; no synthetic ids). Back up first.</p>
+      <button class="btn btn-secondary btn-sm btn-full" onclick="migrateToV2()">Migrate to v2 schema</button>
+      <div id="migrate-status" class="small mt-8"></div>
     </div>
   </div>
 
@@ -824,18 +827,15 @@ async function ensureSpreadsheet() {
   const resp = await sheetsApi('', 'POST', {
     properties: { title: SPREADSHEET_TITLE },
     sheets: [
-      { properties: { title: 'Workouts' } },
       { properties: { title: 'Sets' } },
       { properties: { title: 'Weight' } },
     ]
   });
   await saveSetting('spreadsheetId', resp.spreadsheetId);
-  await sheetsApi('/' + resp.spreadsheetId + '/values/Workouts!A1:F1?valueInputOption=RAW', 'PUT',
-    { values: [['id','date','presetName','durationMinutes','notes','createdAt']] });
-  await sheetsApi('/' + resp.spreadsheetId + '/values/Sets!A1:I1?valueInputOption=RAW', 'PUT',
-    { values: [['id','workoutId','exerciseId','exerciseName','setNumber','weight','reps','effort','timestamp']] });
-  await sheetsApi('/' + resp.spreadsheetId + '/values/Weight!A1:F1?valueInputOption=RAW', 'PUT',
-    { values: [['id','date','weight','unit','notes','createdAt']] });
+  await sheetsApi('/' + resp.spreadsheetId + '/values/Sets!A1:H1?valueInputOption=RAW', 'PUT',
+    { values: [['date','preset','exercise','weight','reps','effort','duration','notes']] });
+  await sheetsApi('/' + resp.spreadsheetId + '/values/Weight!A1:D1?valueInputOption=RAW', 'PUT',
+    { values: [['date','weight','unit','notes']] });
   toast('Spreadsheet created in your Drive');
 }
 
@@ -843,16 +843,63 @@ async function ensureSpreadsheet() {
 // SHEETS DATA LAYER (read/write)
 // ============================================
 
+async function getSheetTitles(sid) {
+  const meta = await sheetsApi('/' + sid + '?fields=sheets(properties(sheetId,title))');
+  return (meta.sheets || []).map(s => ({ id: s.properties.sheetId, title: s.properties.title }));
+}
+
 async function loadDataFromSheets() {
   const sid = settings.spreadsheetId;
-  // Batch read all data
+  const titles = await getSheetTitles(sid);
+  const titleNames = titles.map(t => t.title);
+  // v1 keeps a 'Workouts' tab; v2 has only 'Sets' (and optional Workouts_v1/Sets_v1 archives)
+  const isV2 = !titleNames.includes('Workouts');
+  state.schemaVersion = isV2 ? 2 : 1;
+
+  if (isV2) {
+    const resp = await sheetsApi('/' + sid + '/values:batchGet?ranges=Sets!A2:H&ranges=Weight!A2:D');
+    const ranges = resp.valueRanges || [];
+    const setRows = (ranges[0] && ranges[0].values) || [];
+    const weightRows = (ranges[1] && ranges[1].values) || [];
+
+    // Group rows into workouts by date+preset. Within each workout, group by exercise name.
+    const workoutsByKey = new Map();
+    setRows.forEach(r => {
+      const date = (r[0] || '').trim();
+      const preset = (r[1] || '').trim();
+      const exName = (r[2] || '').trim();
+      if (!date || !exName) return;
+      const key = date + '|' + preset;
+      let wk = workoutsByKey.get(key);
+      if (!wk) {
+        wk = { id: 'wk_'+key, date, presetName: preset || null, durationMinutes: 0, notes: '', exercises: [] };
+        workoutsByKey.set(key, wk);
+      }
+      const dur = parseInt(r[6]) || 0; if (dur > wk.durationMinutes) wk.durationMinutes = dur;
+      if (!wk.notes && r[7]) wk.notes = r[7];
+      let ex = wk.exercises.find(e => e.exerciseName === exName);
+      if (!ex) {
+        const exDef = state.exercises.find(x => x.name === exName);
+        ex = { exerciseId: exDef ? exDef.id : 'ex_name_'+exName, exerciseName: exName, sets: [] };
+        wk.exercises.push(ex);
+      }
+      ex.sets.push({ weight: parseFloat(r[3])||0, reps: parseInt(r[4])||0, effort: r[5]||'' });
+    });
+    state.workoutHistory = Array.from(workoutsByKey.values()).sort((a,b) => new Date(b.date) - new Date(a.date));
+
+    state.weightLog = weightRows.map(r => ({
+      date: (r[0]||'').trim(), weight: parseFloat(r[1])||0, unit: r[2]||'kg', notes: r[3]||'',
+    })).filter(w => w.date).sort((a,b) => new Date(b.date) - new Date(a.date));
+    return;
+  }
+
+  // v1 legacy read
   const resp = await sheetsApi('/' + sid + '/values:batchGet?ranges=Workouts!A2:F&ranges=Sets!A2:I&ranges=Weight!A2:F');
   const ranges = resp.valueRanges || [];
   const workoutRows = (ranges[0] && ranges[0].values) || [];
   const setRows = (ranges[1] && ranges[1].values) || [];
   const weightRows = (ranges[2] && ranges[2].values) || [];
 
-  // Parse workouts
   const workoutsById = {};
   workoutRows.forEach(r => {
     workoutsById[r[0]] = {
@@ -860,8 +907,6 @@ async function loadDataFromSheets() {
       exercises: [],
     };
   });
-
-  // Parse sets and group by workout + exercise
   setRows.forEach(r => {
     const wk = workoutsById[r[1]];
     if (!wk) return;
@@ -869,10 +914,7 @@ async function loadDataFromSheets() {
     if (!ex) { ex = { exerciseId: r[2], exerciseName: r[3], sets: [] }; wk.exercises.push(ex); }
     ex.sets.push({ id: r[0], weight: parseFloat(r[5])||0, reps: parseInt(r[6])||0, effort: r[7]||'' });
   });
-
   state.workoutHistory = Object.values(workoutsById).sort((a,b) => new Date(b.date) - new Date(a.date));
-
-  // Parse weight log
   state.weightLog = weightRows.map(r => ({
     id: r[0], date: r[1], weight: parseFloat(r[2])||0, unit: r[3]||'kg', notes: r[4]||'',
   })).sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -880,6 +922,22 @@ async function loadDataFromSheets() {
 
 async function syncWorkoutToSheets(workout) {
   const sid = settings.spreadsheetId;
+  if (state.schemaVersion === 2) {
+    const dateStr = (workout.date || '').slice(0, 10);
+    const preset = workout.presetName || '';
+    const dur = workout.durationMinutes || 0;
+    const notes = workout.notes || '';
+    const rows = [];
+    workout.exercises.forEach(ex => {
+      ex.sets.forEach(s => {
+        rows.push([dateStr, preset, ex.exerciseName, s.weight||0, s.reps||0, s.effort||'', dur, notes]);
+      });
+    });
+    if (!rows.length) return;
+    await sheetsApi('/' + sid + '/values/Sets!A:H:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST', { values: rows });
+    return;
+  }
+  // v1 legacy write
   await sheetsApi('/' + sid + '/values/Workouts!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST',
     { values: [[workout.id, workout.date, workout.presetName||'', workout.durationMinutes||0, '', new Date().toISOString()]] });
   const setRows = [];
@@ -969,6 +1027,12 @@ async function downloadPendingJson() {
 }
 
 async function syncWeightToSheets(entry) {
+  if (state.schemaVersion === 2) {
+    const dateStr = (entry.date || '').slice(0, 10);
+    await sheetsApi('/' + settings.spreadsheetId + '/values/Weight!A:D:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST',
+      { values: [[dateStr, entry.weight, entry.unit, '']] });
+    return;
+  }
   await sheetsApi('/' + settings.spreadsheetId + '/values/Weight!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST',
     { values: [[entry.id, entry.date, entry.weight, entry.unit, '', new Date().toISOString()]] });
 }
@@ -2210,6 +2274,90 @@ async function saveAnthropicKey() {
 function exportData() {
   const b = new Blob([JSON.stringify({workoutHistory:state.workoutHistory,weightLog:state.weightLog},null,2)],{type:'application/json'});
   const a = document.createElement('a'); a.href=URL.createObjectURL(b); a.download='ironlog-'+new Date().toISOString().slice(0,10)+'.json'; a.click(); toast('Exported');
+}
+
+async function migrateToV2() {
+  const status = document.getElementById('migrate-status');
+  const setStatus = (cls, msg) => {
+    if (!status) return;
+    if (cls === 'dim') status.innerHTML = '<span class="dim">' + msg + '</span>';
+    else status.innerHTML = '<span style="color:var(--' + cls + ')">' + msg + '</span>';
+  };
+  if (!gtoken || !settings.spreadsheetId) { setStatus('red', 'Not signed in'); return; }
+  if (!confirm('Migrate to v2 schema? Renames Workouts/Sets/Weight to *_v1_<timestamp> and writes new flat tabs. Make sure you have a backup.')) return;
+
+  const sid = settings.spreadsheetId;
+  try {
+    setStatus('dim', 'Reading current data...');
+    const titles = await getSheetTitles(sid);
+    const titleNames = titles.map(t => t.title);
+    if (!titleNames.includes('Workouts') || !titleNames.includes('Sets')) throw new Error('Already migrated (no Workouts tab)');
+
+    const resp = await sheetsApi('/' + sid + '/values:batchGet?ranges=Workouts!A2:F&ranges=Sets!A2:I&ranges=Weight!A2:F');
+    const ranges = resp.valueRanges || [];
+    const workoutRows = (ranges[0] && ranges[0].values) || [];
+    const setRows = (ranges[1] && ranges[1].values) || [];
+    const weightRows = (ranges[2] && ranges[2].values) || [];
+
+    const workoutsById = {};
+    workoutRows.forEach(r => {
+      workoutsById[r[0]] = {
+        date: (r[1]||'').slice(0,10),
+        preset: r[2]||'',
+        duration: parseInt(r[3])||0,
+        notes: r[4]||'',
+      };
+    });
+
+    let dropped = 0;
+    const flatSets = [];
+    setRows.forEach(r => {
+      const wk = workoutsById[r[1]];
+      if (!wk) { dropped++; return; }
+      flatSets.push([wk.date, wk.preset, r[3]||'', r[5]||0, r[6]||0, r[7]||'', wk.duration, wk.notes]);
+    });
+
+    const flatWeights = weightRows.map(r => [(r[1]||'').slice(0,10), r[2]||0, r[3]||'lbs', r[4]||'']).filter(r => r[0]);
+
+    setStatus('dim', 'Renaming old tabs and creating new tabs...');
+    const stamp = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+    const wkId = titles.find(t => t.title === 'Workouts').id;
+    const stId = titles.find(t => t.title === 'Sets').id;
+    const wtId = titles.find(t => t.title === 'Weight').id;
+    await sheetsApi('/' + sid + ':batchUpdate', 'POST', {
+      requests: [
+        { updateSheetProperties: { properties: { sheetId: wkId, title: 'Workouts_v1_' + stamp }, fields: 'title' } },
+        { updateSheetProperties: { properties: { sheetId: stId, title: 'Sets_v1_' + stamp }, fields: 'title' } },
+        { updateSheetProperties: { properties: { sheetId: wtId, title: 'Weight_v1_' + stamp }, fields: 'title' } },
+        { addSheet: { properties: { title: 'Sets' } } },
+        { addSheet: { properties: { title: 'Weight' } } },
+      ]
+    });
+
+    setStatus('dim', 'Writing headers and data...');
+    await sheetsApi('/' + sid + '/values/Sets!A1:H1?valueInputOption=RAW', 'PUT',
+      { values: [['date','preset','exercise','weight','reps','effort','duration','notes']] });
+    await sheetsApi('/' + sid + '/values/Weight!A1:D1?valueInputOption=RAW', 'PUT',
+      { values: [['date','weight','unit','notes']] });
+    if (flatSets.length) {
+      await sheetsApi('/' + sid + '/values/Sets!A:H:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST', { values: flatSets });
+    }
+    if (flatWeights.length) {
+      await sheetsApi('/' + sid + '/values/Weight!A:D:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST', { values: flatWeights });
+    }
+
+    setStatus('dim', 'Reloading...');
+    state.schemaVersion = 2;
+    await loadDataFromSheets();
+    renderAll();
+
+    const summary = 'Migrated ' + Object.keys(workoutsById).length + ' workouts / ' + flatSets.length + ' sets / ' + flatWeights.length + ' weights' + (dropped ? ' (' + dropped + ' orphan sets dropped)' : '');
+    setStatus('green', summary);
+    toast('Migration complete');
+  } catch(e) {
+    setStatus('red', 'Failed: ' + e.message);
+    toast('Migration failed', true);
+  }
 }
 
 async function backupSpreadsheet() {
