@@ -374,6 +374,10 @@
       <button class="btn btn-secondary btn-sm btn-full" onclick="googleSignOut()">Sign out</button>
     </div>
     <div class="settings-section">
+      <h3>Pending Workouts</h3>
+      <div id="pending-workouts-content"></div>
+    </div>
+    <div class="settings-section">
       <h3>AI Coach (Anthropic)</h3>
       <div class="input-group"><div class="input-label">API Key</div><input type="password" id="anthropic-key" placeholder="sk-ant-..."></div>
       <button class="btn btn-secondary btn-sm btn-full mb-12" onclick="saveAnthropicKey()">Save Key</button>
@@ -899,6 +903,69 @@ async function flushPendingWorkouts() {
   if (pending.length > failed.length) toast((pending.length - failed.length) + ' offline workout(s) synced');
 }
 
+async function renderPendingWorkouts() {
+  const el = document.getElementById('pending-workouts-content');
+  if (!el) return;
+  const pending = await dbGet('pendingWorkouts') || [];
+  if (!pending.length) { el.innerHTML = '<p class="small dim">No unsynced workouts.</p>'; return; }
+  const list = pending.map((w, i) => {
+    const date = new Date(w.date).toLocaleString();
+    const sets = w.exercises.reduce((n, ex) => n + ex.sets.length, 0);
+    return '<div class="small mb-4">' + (i+1) + '. ' + date + ' &mdash; ' + (w.presetName||'(no preset)') + ' &middot; ' + w.exercises.length + ' ex / ' + sets + ' sets &middot; ' + (w.durationMinutes||0) + ' min</div>';
+  }).join('');
+  el.innerHTML =
+    '<p class="small dim mb-8">' + pending.length + ' workout(s) saved on this device but not in Sheets.</p>' +
+    list +
+    '<div id="pending-retry-status" class="small mt-8 mb-8"></div>' +
+    '<button class="btn btn-secondary btn-sm btn-full mb-8" onclick="retryPendingSync()">Retry sync</button>' +
+    '<button class="btn btn-secondary btn-sm btn-full mb-8" onclick="copyPendingJson()">Copy JSON</button>' +
+    '<button class="btn btn-secondary btn-sm btn-full" onclick="downloadPendingJson()">Download JSON</button>';
+}
+
+async function retryPendingSync() {
+  const status = document.getElementById('pending-retry-status');
+  if (status) status.innerHTML = '<span class="dim">Retrying...</span>';
+  const pending = await dbGet('pendingWorkouts') || [];
+  const stillPending = [];
+  const errors = [];
+  for (const w of pending) {
+    try { await syncWorkoutToSheets(w); }
+    catch(e) {
+      stillPending.push(w);
+      errors.push(new Date(w.date).toLocaleString() + ' (' + (w.presetName||'no preset') + '): ' + e.message);
+    }
+  }
+  await dbSet('pendingWorkouts', stillPending);
+  const synced = pending.length - stillPending.length;
+  if (!stillPending.length) {
+    if (status) status.innerHTML = '<span style="color:var(--green)">All ' + synced + ' synced. Reloading...</span>';
+    try { await loadDataFromSheets(); renderAll(); } catch(e) { /* ignore */ }
+    renderPendingWorkouts();
+    return;
+  }
+  if (status) status.innerHTML =
+    (synced ? '<div style="color:var(--green)">' + synced + ' synced.</div>' : '') +
+    '<div style="color:var(--red)">' + stillPending.length + ' failed:</div>' +
+    errors.map(e => '<div style="color:var(--red)">&middot; ' + e + '</div>').join('');
+  renderPendingWorkouts();
+}
+
+async function copyPendingJson() {
+  const pending = await dbGet('pendingWorkouts') || [];
+  try { await navigator.clipboard.writeText(JSON.stringify(pending, null, 2)); toast('Copied ' + pending.length + ' workout(s) to clipboard'); }
+  catch(e) { toast('Copy failed: ' + e.message, true); }
+}
+
+async function downloadPendingJson() {
+  const pending = await dbGet('pendingWorkouts') || [];
+  const blob = new Blob([JSON.stringify(pending, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pending-workouts-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  toast('Downloaded');
+}
+
 async function syncWeightToSheets(entry) {
   await sheetsApi('/' + settings.spreadsheetId + '/values/Weight!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST',
     { values: [[entry.id, entry.date, entry.weight, entry.unit, '', new Date().toISOString()]] });
@@ -979,6 +1046,7 @@ function switchTab(name, btn) {
   if (name==='home') renderHome();
   if (name==='weight') renderWeight();
   if (name==='chat') renderChat();
+  if (name==='settings') renderPendingWorkouts();
 }
 
 // ============================================
