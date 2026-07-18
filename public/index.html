@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async></script>
+<script src="progress-engine.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -155,6 +156,14 @@
   .history-card-date { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
   .history-card-meta { display: flex; gap: 16px; font-size: 13px; color: var(--text-dim); }
   .history-card-exercises { margin-top: 10px; font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+  .history-progress-awards { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 9px; }
+  .history-awards-row { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+  .history-earned-points { color: var(--green); font: 700 12px var(--mono); margin-right: 2px; }
+  .history-award-tag { background: var(--bg-2); border-radius: 5px; color: #ffd65a; font: 600 9px var(--mono); padding: 3px 5px; }
+  .history-award-tag.loss { color: var(--red); }
+  .history-award-tag.prime { color: var(--accent); }
+  .history-award-tag.excluded { color: var(--red); }
+  .history-muscle-deltas { color: var(--text-faint); font: 9px var(--mono); line-height: 1.5; margin-top: 5px; }
 
   .settings-section { margin-bottom: 28px; }
   .settings-section h3 { margin-bottom: 12px; color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; }
@@ -217,60 +226,40 @@
   #sign-in-gate .setup-input { margin-top: 8px; }
   .loading-spinner { color: var(--text-dim); font-size: 14px; padding: 40px; text-align: center; }
 
-  /* PR overlay */
-  .pr-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 250; align-items: center; justify-content: center; flex-direction: column; }
-  .pr-overlay.open { display: flex; }
-  .pr-content { background: var(--bg-1); border: 2px solid var(--accent); border-radius: 16px; padding: 28px 24px; max-width: 380px; width: 90%; text-align: center; animation: slideUp 0.3s ease-out; }
-  .pr-title { font-size: 24px; font-weight: 700; color: var(--accent); margin-bottom: 16px; }
-  .pr-list { text-align: left; margin-bottom: 20px; }
-  .pr-item { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
-  .pr-item .pr-exercise { font-weight: 600; color: var(--text); }
-  .pr-item .pr-improvement { color: var(--green); font-family: var(--mono); font-size: 13px; }
+  /* Muscle progress */
+  .history-progress-widget { margin-bottom: 16px; padding: 14px; }
+  .history-progress-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .history-progress-head h2 { font-size: 16px; }
+  .history-progress-version { color: var(--text-faint); font: 10px var(--mono); }
+  .history-progress-totals { display: flex; gap: 14px; margin-top: 8px; color: var(--text-dim); font-size: 10px; }
+  .history-progress-totals strong { color: var(--text); font: 700 13px var(--mono); }
+  .history-progress-note { color: var(--text-dim); font-size: 10px; margin-top: 6px; }
+  .history-progress-muscles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-top: 11px; }
+  .history-progress-chip { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px; min-width: 0; }
+  .history-progress-chip .name { display: block; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim); font-size: 9px; text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; }
+  .history-progress-chip .status { color: #ffd65a; font: 700 12px var(--mono); white-space: nowrap; }
+  .history-progress-chip .status.priming { color: var(--accent); }
+  .history-progress-chip .best { color: var(--text-faint); font-size: 9px; margin-left: 3px; }
+  .history-progress-chip .points { color: var(--text-faint); font: 9px var(--mono); }
+  .progress-primer { height: 5px; background: var(--bg-3); border-radius: 999px; overflow: hidden; margin-top: 8px; }
+  .progress-primer-fill { height: 100%; background: var(--accent); border-radius: inherit; }
 
-  /* Loot box overlay */
-  .lootbox-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 260; align-items: center; justify-content: center; flex-direction: column; }
-  .lootbox-overlay.open { display: flex; }
-  .lootbox-content { text-align: center; max-width: 320px; width: 90%; }
-  .lootbox-box { width: 120px; height: 120px; margin: 0 auto 20px; background: var(--bg-2); border: 3px solid var(--accent); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 48px; cursor: pointer; }
-  .lootbox-box.shaking { animation: lootShake 0.6s ease-in-out; }
-  .lootbox-box.opening { animation: lootOpen 0.4s ease-out forwards; }
-  @keyframes lootShake { 0%,100%{transform:translateX(0) rotate(0)} 20%{transform:translateX(-8px) rotate(-3deg)} 40%{transform:translateX(8px) rotate(3deg)} 60%{transform:translateX(-6px) rotate(-2deg)} 80%{transform:translateX(6px) rotate(2deg)} }
-  @keyframes lootOpen { 0%{transform:scale(1);opacity:1} 50%{transform:scale(1.3);opacity:0.8} 100%{transform:scale(0);opacity:0} }
-  .loot-reveal { animation: lootReveal 0.4s ease-out; }
-  @keyframes lootReveal { 0%{transform:scale(0);opacity:0} 60%{transform:scale(1.2)} 100%{transform:scale(1);opacity:1} }
-  .loot-item-card { background: var(--bg-1); border-radius: 12px; padding: 20px; border: 2px solid var(--text-faint); }
-  .loot-item-card.common { border-color: #8a8580; }
-  .loot-item-card.uncommon { border-color: var(--green); box-shadow: 0 0 20px rgba(90,173,106,0.3); }
-  .loot-item-card.rare { border-color: var(--blue); box-shadow: 0 0 20px rgba(90,141,212,0.3); }
-  .loot-item-card.legendary { border-color: #ffd700; box-shadow: 0 0 30px rgba(255,215,0,0.4); }
-  .loot-rarity { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
-  .loot-rarity.common { color: #8a8580; }
-  .loot-rarity.uncommon { color: var(--green); }
-  .loot-rarity.rare { color: var(--blue); }
-  .loot-rarity.legendary { color: #ffd700; }
-  .loot-item-name { font-size: 18px; font-weight: 700; color: var(--text); margin-top: 4px; }
-  .loot-slot { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
-
-  /* Inventory overlay */
-  .inventory-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: flex-end; justify-content: center; }
-  .inventory-overlay.open { display: flex; }
-  .inventory-sheet { background: var(--bg-1); border-radius: 20px 20px 0 0; width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; padding: 24px 16px; padding-bottom: calc(24px + var(--safe-bottom)); animation: slideUp 0.25s ease-out; }
-  .inventory-character { display: flex; justify-content: center; margin-bottom: 20px; }
-  .inventory-slots { margin-bottom: 16px; }
-  .inventory-slot-label { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; padding: 10px 0 6px; border-bottom: 1px solid var(--border); }
-  .inventory-items { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0; }
-  .inventory-item { width: 56px; height: 56px; background: var(--bg-2); border: 2px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; }
-  .inventory-item.equipped { border-color: var(--accent); background: rgba(232,168,76,0.1); }
-  .inventory-item.common { border-color: #8a8580; }
-  .inventory-item.uncommon { border-color: var(--green); }
-  .inventory-item.rare { border-color: var(--blue); }
-  .inventory-item.legendary { border-color: #ffd700; }
-  .inventory-item-name { position: absolute; bottom: -16px; font-size: 9px; color: var(--text-dim); white-space: nowrap; max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
-
-  /* Character on home */
-  .home-title-row { display: flex; align-items: center; gap: 12px; }
-  .character-btn { background: none; border: 2px solid var(--border); border-radius: 10px; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .character-btn:active { border-color: var(--accent); }
+  /* Workout scoring overlay */
+  .award-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.86); z-index: 250; align-items: center; justify-content: center; }
+  .award-overlay.open { display: flex; }
+  .award-content { background: var(--bg-1); border: 2px solid var(--accent); border-radius: 16px; padding: 24px 20px; max-width: 390px; width: 92%; max-height: 85vh; overflow-y: auto; animation: slideUp .3s ease-out; }
+  .award-title { color: var(--accent); font-size: 23px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+  .award-subtitle { color: var(--text-dim); font-size: 12px; text-align: center; margin-bottom: 14px; }
+  .award-item { border-top: 1px solid var(--border); padding: 11px 0; }
+  .award-item:first-child { border-top: 0; }
+  .award-row { display: flex; justify-content: space-between; gap: 12px; }
+  .award-muscle { font-weight: 600; }
+  .award-points { color: var(--green); font: 700 13px var(--mono); }
+  .award-star { color: #ffd65a; font: 600 11px var(--mono); margin-top: 3px; }
+  .award-star.loss { color: var(--red); }
+  .award-primer { color: var(--accent); font: 600 11px var(--mono); margin-top: 3px; }
+  .award-reason { color: var(--text-dim); font-size: 10px; margin-top: 4px; }
+  @media(max-width:360px) { .history-progress-muscles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
   /* AI Suggestion */
   .ai-suggestion { border-color: var(--purple); }
@@ -293,7 +282,7 @@
 <div id="app" style="display:none;">
 
   <div id="screen-home" class="screen active">
-    <div class="mb-20"><div class="home-title-row"><h1>Iron Log</h1><button class="character-btn" onclick="openInventory()" id="home-character"></button></div><p class="dim small mt-8">Your gym. Your data.</p></div>
+    <div class="mb-20"><h1>Iron Log</h1><p class="dim small mt-8">Your gym. Your data.</p></div>
     <div id="today-plan" class="mb-20"></div>
     <div class="flex items-center justify-between mb-12"><h3 class="dim">This Week</h3></div>
     <div class="week-grid" id="week-grid"></div>
@@ -354,8 +343,10 @@
     <div id="weight-history"></div>
   </div>
 
-  <div id="screen-history" class="screen">
-    <h1 class="mb-20">History</h1>
+  <div id="screen-progress" class="screen">
+    <h1 class="mb-20">Progress</h1>
+    <div id="history-progress-status" class="card history-progress-widget"></div>
+    <h3 class="dim mb-12">Exercise history</h3>
     <div id="history-list"></div>
   </div>
 
@@ -403,7 +394,7 @@
     <button class="active" onclick="switchTab('home', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home</button>
     <button onclick="switchTab('workout', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="4" height="10" rx="1"/><rect x="18" y="7" width="4" height="10" rx="1"/><line x1="6" y1="12" x2="18" y2="12"/><rect x="8" y="9" width="3" height="6" rx="0.5"/><rect x="13" y="9" width="3" height="6" rx="0.5"/></svg>Workout</button>
     <button onclick="switchTab('weight', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v18M3 12h18M7.5 7.5l9 9M16.5 7.5l-9 9"/><circle cx="12" cy="12" r="3"/></svg>Weight</button>
-    <button onclick="switchTab('history', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>History</button>
+    <button onclick="switchTab('progress', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg>Progress</button>
     <button onclick="switchTab('chat', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Coach</button>
     <button onclick="switchTab('settings', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</button>
   </div></nav>
@@ -444,24 +435,12 @@
   <button class="btn btn-primary mt-16" id="start-preset-btn">Start This Session</button>
 </div></div>
 
-<div class="pr-overlay" id="pr-overlay">
-  <div class="pr-content">
-    <div class="pr-title">NEW PR!</div>
-    <div class="pr-list" id="pr-list"></div>
-    <button class="btn btn-primary" id="pr-claim-btn" onclick="claimLootBoxes()">Claim Rewards</button>
-  </div>
-</div>
-
-<div class="lootbox-overlay" id="lootbox-overlay">
-  <div class="lootbox-content" id="lootbox-content"></div>
-</div>
-
-<div class="inventory-overlay" id="inventory-overlay">
-  <div class="inventory-sheet">
-    <div class="overlay-handle"></div>
-    <div class="flex items-center justify-between mb-16"><h2>Inventory</h2><button class="btn-ghost" onclick="closeInventory()">Close</button></div>
-    <div class="inventory-character" id="inventory-character"></div>
-    <div class="inventory-slots" id="inventory-slots"></div>
+<div class="award-overlay" id="progress-award-overlay">
+  <div class="award-content">
+    <div class="award-title">Workout scored</div>
+    <div class="award-subtitle">Muscle progress updated from this session</div>
+    <div id="progress-award-list"></div>
+    <button class="btn btn-primary mt-16" onclick="closeProgressAwards()">Continue</button>
   </div>
 </div>
 
@@ -762,7 +741,6 @@ async function onGoogleToken(resp) {
   }
   document.getElementById('anthropic-model').value = settings.anthropicModel;
   document.getElementById('weight-unit-btn').textContent = settings.weightUnit;
-  await loadCharacter();
   renderAll();
   if (state.currentWorkout) {
     startTimer();
@@ -890,6 +868,7 @@ async function loadDataFromSheets() {
     state.weightLog = weightRows.map(r => ({
       date: (r[0]||'').trim(), weight: parseFloat(r[1])||0, unit: r[2]||'kg', notes: r[3]||'',
     })).filter(w => w.date).sort((a,b) => new Date(b.date) - new Date(a.date));
+    rebuildMuscleProgress();
     return;
   }
 
@@ -918,6 +897,7 @@ async function loadDataFromSheets() {
   state.weightLog = weightRows.map(r => ({
     id: r[0], date: r[1], weight: parseFloat(r[2])||0, unit: r[3]||'kg', notes: r[4]||'',
   })).sort((a,b) => new Date(b.date) - new Date(a.date));
+  rebuildMuscleProgress();
 }
 
 async function syncWorkoutToSheets(workout) {
@@ -1070,12 +1050,25 @@ let state = {
   currentWorkout: null,
   workoutHistory: [], // loaded from Sheets
   weightLog: [],      // loaded from Sheets
-  inventory: [],
-  equipped: { hat:null, shirt:null, pants:null, shoes:null, accessory:null },
+  muscleProgress: null,
 };
 
 function renderAll() {
   renderHome(); renderHistory(); renderWeight(); renderChat();
+}
+
+function rebuildMuscleProgress() {
+  if (!exerciseDb || typeof MuscleProgress === 'undefined') {
+    state.muscleProgress = null;
+    return null;
+  }
+  state.muscleProgress = MuscleProgress.replayHistory(state.workoutHistory, exerciseDb);
+  return state.muscleProgress;
+}
+
+function scoreWorkoutProgress(workout) {
+  if (!state.muscleProgress) rebuildMuscleProgress();
+  return state.muscleProgress ? MuscleProgress.applyWorkout(state.muscleProgress, workout) : null;
 }
 
 // ============================================
@@ -1108,11 +1101,69 @@ function switchTab(name, btn) {
   document.getElementById('screen-'+name).classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  if (name==='history') renderHistory();
+  if (name==='progress') renderHistory();
   if (name==='home') renderHome();
   if (name==='weight') renderWeight();
   if (name==='chat') renderChat();
   if (name==='settings') renderPendingWorkouts();
+}
+
+// ============================================
+// MUSCLE PROGRESS
+// ============================================
+
+function renderHistoryProgressStatus() {
+  const widget = document.getElementById('history-progress-status');
+  if (!widget) return;
+  if (!state.muscleProgress) rebuildMuscleProgress();
+  if (!state.muscleProgress) {
+    widget.innerHTML = '<p class="small dim">Progress unavailable.</p>';
+    return;
+  }
+  const snapshot = MuscleProgress.getProgressSnapshot(state.muscleProgress);
+  const muscles = Object.values(snapshot.muscles);
+  const establishedBaselines = muscles.filter(muscle => muscle.baselineEstablished).length;
+  const totalPoints = muscles.reduce((sum, muscle) => sum + muscle.points, 0).toFixed(0);
+  const totalStars = muscles.reduce((sum, muscle) => sum + muscle.currentStars, 0);
+  const note = establishedBaselines === MuscleProgress.MUSCLE_GROUPS.length
+    ? 'Baselines primed · stars track current strength and can be regained.'
+    : 'Prime with 3 sessions of the same primary exercise · points count immediately.';
+  const chips = MuscleProgress.MUSCLE_GROUPS.map(group => {
+    const muscle = snapshot.muscles[group];
+    const title = muscle.baselineEstablished
+      ? group+' · strength '+muscle.currentIndex.toFixed(1)+'% · peak '+muscle.peakIndex.toFixed(1)+'% · best '+muscle.peakStars+' stars'
+      : group+' · baseline '+muscle.primingSessions+'/'+muscle.primingTarget+(muscle.primingExercise?' with '+muscle.primingExercise:'');
+    const status = muscle.baselineEstablished
+      ? '<span class="status">★ '+muscle.currentStars+'</span>'+(muscle.peakStars > muscle.currentStars ? '<span class="best">best '+muscle.peakStars+'</span>' : '')
+      : '<span class="status priming">'+muscle.primingSessions+'/'+muscle.primingTarget+'</span><span class="best">prime</span>';
+    return '<div class="history-progress-chip" title="'+escapeHtml(title)+'"><span class="name">'+group+'</span>'+status+'<div class="points">'+muscle.points.toFixed(1)+' pts</div></div>';
+  }).join('');
+  widget.innerHTML = '<div class="history-progress-head"><h2>Muscle status</h2><span class="history-progress-version">'+snapshot.version+'</span></div>' +
+    '<div class="history-progress-totals"><span><strong>'+totalPoints+'</strong> pts</span><span><strong>'+totalStars+'</strong> stars</span><span><strong>'+establishedBaselines+'/'+MuscleProgress.MUSCLE_GROUPS.length+'</strong> primed</span></div>' +
+    '<div class="history-progress-note">'+note+'</div><div class="history-progress-muscles">'+chips+'</div>';
+}
+
+function showProgressAwards(event) {
+  if (!event || event.skipped) return;
+  const entries = Object.entries(event.muscleChanges)
+    .filter(([, change]) => change.totalPoints > 0 || change.starChange)
+    .sort((left, right) => right[1].totalPoints - left[1].totalPoints);
+  if (!entries.length) return;
+  document.getElementById('progress-award-list').innerHTML = entries.map(([group, change]) => {
+    const star = change.starChange;
+    const starHtml = star ? '<div class="award-star'+(star.to < star.from ? ' loss' : '')+'">★ '+star.from+' → '+star.to+'</div>' : '';
+    const priming = change.primingChange;
+    const primingHtml = change.baselineEstablished
+      ? '<div class="award-primer">Baseline established</div>'
+      : priming ? '<div class="award-primer">Baseline '+priming.to+'/'+priming.target+'</div>' : '';
+    const reasons = change.reasons.slice(0, 3).map(escapeHtml).join(' · ');
+    return '<div class="award-item"><div class="award-row"><span class="award-muscle">'+group+'</span><span class="award-points">+'+change.totalPoints.toFixed(1)+' pts</span></div>'+starHtml+primingHtml+'<div class="award-reason">'+reasons+'</div></div>';
+  }).join('');
+  document.getElementById('progress-award-overlay').classList.add('open');
+}
+
+function closeProgressAwards() {
+  document.getElementById('progress-award-overlay').classList.remove('open');
 }
 
 // ============================================
@@ -1292,7 +1343,7 @@ function showPresetDetail(pid) {
 }
 
 // ============================================
-// PR TRACKING & PREPOPULATION
+// WORKOUT HISTORY HELPERS & PREPOPULATION
 // ============================================
 
 function getPreviousBest(exerciseName) {
@@ -1333,32 +1384,6 @@ function getExerciseTrend(exerciseName, workoutIdx) {
     return 'flat';
   }
   return null;
-}
-
-function detectPRs(workout) {
-  const prs = [];
-  workout.exercises.forEach(ex => {
-    let newBest = 0;
-    ex.sets.forEach(s => {
-      const vol = s.weight * s.reps;
-      if (vol > newBest) newBest = vol;
-    });
-    if (newBest <= 0) return;
-    let oldBest = 0;
-    for (const w of state.workoutHistory) {
-      const prev = w.exercises.find(e => e.exerciseName === ex.exerciseName);
-      if (prev) {
-        prev.sets.forEach(s => {
-          const vol = s.weight * s.reps;
-          if (vol > oldBest) oldBest = vol;
-        });
-      }
-    }
-    if (newBest > oldBest && oldBest > 0) {
-      prs.push({ exerciseName: ex.exerciseName, newBest, oldBest });
-    }
-  });
-  return prs;
 }
 
 // ============================================
@@ -1421,7 +1446,9 @@ async function finishWorkout() {
     exercises:w.exercises.map(ex=>({exerciseId:ex.exerciseId,exerciseName:ex.exerciseName,comment:ex.comment||'',
       sets:ex.sets.map(s=>({id:s.id, weight:s.weight, reps:s.reps, effort:s.effort||''}))})),
   };
-  const prs = detectPRs(finished);
+  let progressEvent = null;
+  try { progressEvent = scoreWorkoutProgress(finished); }
+  catch (e) { console.warn('Progress scoring failed', e); }
   state.currentWorkout=null;
   dbSet('currentWorkout', null);
   document.getElementById('finish-confirm').style.display='none';
@@ -1429,10 +1456,11 @@ async function finishWorkout() {
 
   state.workoutHistory.unshift(finished);
   renderHome();
+  renderHistoryProgressStatus();
+  showProgressAwards(progressEvent);
   try {
     await syncWorkoutToSheets(finished);
     toast('Workout saved -- '+dur+' min');
-    if (prs.length) showPRCelebration(prs);
   } catch(e) {
     let stashed = false;
     try {
@@ -1443,7 +1471,6 @@ async function finishWorkout() {
     } catch(_) {}
     try { downloadWorkoutBackup(finished); } catch(_) {}
     toast('Sync failed: '+e.message+' -- backup downloaded'+(stashed?' + saved on device':''), true);
-    if (prs.length) showPRCelebration(prs);
   }
 }
 
@@ -1667,9 +1694,50 @@ function confirmRemoveExercise(xi){
 // HISTORY
 // ============================================
 
+function getWorkoutProgressEvent(workout) {
+  if (!workout || !state.muscleProgress) return null;
+  return state.muscleProgress.events.find(event => event.workoutId === workout.id) || null;
+}
+
+function renderWorkoutProgressAnnotation(event, detailed) {
+  if (!event) return '';
+  if (event.skipped) {
+    return '<div class="history-progress-awards"><div class="history-awards-row"><span class="history-award-tag excluded">Progress excluded</span></div></div>';
+  }
+  const changes = Object.entries(event.muscleChanges)
+    .filter(([, change]) => change.totalPoints > 0 || change.starChange || change.primingChange)
+    .sort((left, right) => right[1].totalPoints - left[1].totalPoints);
+  if (!changes.length) return '';
+
+  const totalPoints = changes.reduce((sum, [, change]) => sum + change.totalPoints, 0);
+  const tags = [];
+  changes.forEach(([group, change]) => {
+    if (change.starChange) {
+      const lost = change.starChange.to < change.starChange.from ? ' loss' : '';
+      tags.push('<span class="history-award-tag'+lost+'">'+group+' ★'+change.starChange.from+'→'+change.starChange.to+'</span>');
+    }
+    if (change.baselineEstablished) {
+      tags.push('<span class="history-award-tag prime">'+group+' baseline ✓</span>');
+    } else if (change.primingChange) {
+      tags.push('<span class="history-award-tag prime">'+group+' baseline '+change.primingChange.to+'/'+change.primingChange.target+'</span>');
+    }
+  });
+
+  const pointChanges = changes.filter(([, change]) => change.totalPoints > 0);
+  const visiblePointChanges = detailed ? pointChanges : pointChanges.slice(0, 4);
+  const deltas = visiblePointChanges.map(([group, change]) => group+' +'+change.totalPoints.toFixed(1));
+  if (!detailed && pointChanges.length > visiblePointChanges.length) {
+    deltas.push('+'+(pointChanges.length-visiblePointChanges.length)+' more');
+  }
+  return '<div class="history-progress-awards"><div class="history-awards-row"><span class="history-earned-points">+'+totalPoints.toFixed(1)+' pts</span>'+tags.join('')+'</div>'+
+    (deltas.length ? '<div class="history-muscle-deltas">'+deltas.join(' · ')+'</div>' : '')+'</div>';
+}
+
 function renderHistory() {
+  renderHistoryProgressStatus();
   const c=document.getElementById('history-list');
   if(!state.workoutHistory.length){c.innerHTML='<div class="empty-state"><p>No history yet.</p></div>';return;}
+  const progressEvents = new Map((state.muscleProgress?.events || []).map(event => [event.workoutId, event]));
   let h='';
   state.workoutHistory.forEach((w,i)=>{
     const d=new Date(w.date);
@@ -1677,7 +1745,8 @@ function renderHistory() {
     const ts=w.exercises.reduce((s,ex)=>s+ex.sets.length,0);
     const names=w.exercises.map(e=>e.exerciseName).join(', ');
     const label=w.presetName?'<span class="day-preset '+w.presetName.toLowerCase()+'" style="margin-left:8px;">'+w.presetName+'</span>':'';
-    h+='<div class="card history-card" onclick="showWorkoutDetail('+i+')"><div class="history-card-date">'+ds+label+'</div><div class="history-card-meta"><span>'+w.exercises.length+' exercises</span><span>'+ts+' sets</span><span>'+(w.durationMinutes||'--')+' min</span></div><div class="history-card-exercises">'+names+'</div></div>';
+    const progress=renderWorkoutProgressAnnotation(progressEvents.get(w.id), false);
+    h+='<div class="card history-card" onclick="showWorkoutDetail('+i+')"><div class="history-card-date">'+ds+label+'</div><div class="history-card-meta"><span>'+w.exercises.length+' exercises</span><span>'+ts+' sets</span><span>'+(w.durationMinutes||'--')+' min</span></div><div class="history-card-exercises">'+names+'</div>'+progress+'</div>';
   });
   c.innerHTML=h;
 }
@@ -1686,7 +1755,7 @@ function showWorkoutDetail(idx) {
   const w=state.workoutHistory[idx]; if(!w) return;
   const d=new Date(w.date);
   document.getElementById('detail-title').textContent=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-  let h='<div class="dim small mb-16">'+(w.durationMinutes||'--')+' minutes'+(w.presetName?' -- '+w.presetName:'')+'</div>';
+  let h='<div class="dim small mb-16">'+(w.durationMinutes||'--')+' minutes'+(w.presetName?' -- '+w.presetName:'')+'</div>'+renderWorkoutProgressAnnotation(getWorkoutProgressEvent(w), true);
   w.exercises.forEach(ex=>{
     const mg = (state.exercises.find(e=>e.id===ex.exerciseId)||{}).muscleGroup||'Other';
     const trend = getExerciseTrend(ex.exerciseName, idx);
@@ -2383,299 +2452,6 @@ async function backupSpreadsheet() {
 }
 
 // ============================================
-// LOOT ITEMS & PR CELEBRATION
-// ============================================
-
-const LOOT_ITEMS = {
-  hat: [
-    { name:'Sweatband', rarity:'common', color:'#cc3333' },
-    { name:'Baseball Cap', rarity:'common', color:'#4466aa' },
-    { name:'Beanie', rarity:'uncommon', color:'#555555' },
-    { name:'Viking Helm', rarity:'rare', color:'#aa8833' },
-    { name:'Crown', rarity:'legendary', color:'#ffd700' },
-  ],
-  shirt: [
-    { name:'Tank Top', rarity:'common', color:'#dddddd' },
-    { name:'Gym Tee', rarity:'common', color:'#3388cc' },
-    { name:'Hoodie', rarity:'uncommon', color:'#666666' },
-    { name:'Compression Shirt', rarity:'rare', color:'#222222' },
-    { name:'Golden Armor', rarity:'legendary', color:'#ffd700' },
-  ],
-  pants: [
-    { name:'Gym Shorts', rarity:'common', color:'#444444' },
-    { name:'Joggers', rarity:'common', color:'#555566' },
-    { name:'Cargo Pants', rarity:'uncommon', color:'#667744' },
-    { name:'Leggings', rarity:'rare', color:'#333355' },
-    { name:'Golden Greaves', rarity:'legendary', color:'#ffd700' },
-  ],
-  shoes: [
-    { name:'Sneakers', rarity:'common', color:'#dddddd' },
-    { name:'Running Shoes', rarity:'common', color:'#cc4444' },
-    { name:'Lifting Shoes', rarity:'uncommon', color:'#3355aa' },
-    { name:'Combat Boots', rarity:'rare', color:'#443322' },
-    { name:'Winged Sandals', rarity:'legendary', color:'#ffd700' },
-  ],
-  accessory: [
-    { name:'Wrist Wraps', rarity:'common', color:'#cccccc' },
-    { name:'Lifting Belt', rarity:'common', color:'#8b6914' },
-    { name:'Knee Sleeves', rarity:'uncommon', color:'#cc3333' },
-    { name:'Chalk Bag', rarity:'rare', color:'#eeeeee' },
-    { name:'Infinity Gauntlet', rarity:'legendary', color:'#ffd700' },
-  ],
-};
-
-const RARITY_WEIGHTS = { common:60, uncommon:25, rare:12, legendary:3 };
-
-function rollLootBox() {
-  const slots = Object.keys(LOOT_ITEMS);
-  const slot = slots[Math.floor(Math.random() * slots.length)];
-  // weighted rarity pick
-  const total = Object.values(RARITY_WEIGHTS).reduce((a,b)=>a+b,0);
-  let r = Math.random() * total;
-  let rarity = 'common';
-  for (const [rar, w] of Object.entries(RARITY_WEIGHTS)) {
-    r -= w;
-    if (r <= 0) { rarity = rar; break; }
-  }
-  const items = LOOT_ITEMS[slot].filter(i => i.rarity === rarity);
-  if (!items.length) return { slot, ...LOOT_ITEMS[slot][0] };
-  return { slot, ...items[Math.floor(Math.random() * items.length)] };
-}
-
-let pendingLoot = [];
-let pendingLootIndex = 0;
-
-function showPRCelebration(prs) {
-  let h = '';
-  prs.forEach(pr => {
-    const pct = Math.round((pr.newBest - pr.oldBest) / pr.oldBest * 100);
-    h += '<div class="pr-item"><div class="pr-exercise">' + pr.exerciseName + '</div><div class="pr-improvement">' + pr.oldBest + ' -> ' + pr.newBest + ' vol (+' + pct + '%)</div></div>';
-  });
-  document.getElementById('pr-list').innerHTML = h;
-  document.getElementById('pr-overlay').classList.add('open');
-  pendingLoot = prs.map(() => rollLootBox());
-  pendingLootIndex = 0;
-}
-
-async function claimLootBoxes() {
-  document.getElementById('pr-overlay').classList.remove('open');
-  // save all loot items
-  const inventory = await dbGet('inventory') || [];
-  pendingLoot.forEach(item => inventory.push(item));
-  await dbSet('inventory', inventory);
-  state.inventory = inventory;
-  // show first loot box
-  showLootBox(0);
-}
-
-function showLootBox(idx) {
-  if (idx >= pendingLoot.length) {
-    document.getElementById('lootbox-overlay').classList.remove('open');
-    renderHomeCharacter();
-    return;
-  }
-  pendingLootIndex = idx;
-  const item = pendingLoot[idx];
-  const isLast = idx === pendingLoot.length - 1;
-  document.getElementById('lootbox-content').innerHTML =
-    '<p class="dim small mb-12">Reward ' + (idx+1) + ' of ' + pendingLoot.length + '</p>' +
-    '<div class="lootbox-box" id="lootbox-box" onclick="openLootBox()"><span style="font-size:40px">?</span></div>' +
-    '<div id="loot-reveal" style="display:none"></div>';
-  document.getElementById('lootbox-overlay').classList.add('open');
-}
-
-function openLootBox() {
-  const box = document.getElementById('lootbox-box');
-  if (box.classList.contains('shaking')) return;
-  box.classList.add('shaking');
-  setTimeout(() => {
-    box.classList.remove('shaking');
-    box.classList.add('opening');
-    setTimeout(() => revealLoot(), 400);
-  }, 600);
-}
-
-function revealLoot() {
-  const item = pendingLoot[pendingLootIndex];
-  const isLast = pendingLootIndex === pendingLoot.length - 1;
-  document.getElementById('lootbox-box').style.display = 'none';
-  const reveal = document.getElementById('loot-reveal');
-  reveal.style.display = 'block';
-  reveal.innerHTML =
-    '<div class="loot-reveal"><div class="loot-item-card ' + item.rarity + '">' +
-    '<div style="width:48px;height:48px;margin:0 auto;background:' + item.color + ';border-radius:8px;"></div>' +
-    '<div class="loot-rarity ' + item.rarity + '">' + item.rarity + '</div>' +
-    '<div class="loot-item-name">' + item.name + '</div>' +
-    '<div class="loot-slot">' + item.slot + '</div>' +
-    '</div></div>' +
-    '<button class="btn btn-primary mt-16" onclick="showLootBox(' + (pendingLootIndex + 1) + ')">' + (isLast ? 'Done' : 'Next') + '</button>';
-}
-
-// ============================================
-// CHARACTER SYSTEM
-// ============================================
-
-// 12x16 pixel art character base
-const CHARACTER_BASE = [
-  '....####....',
-  '...######...',
-  '...######...',
-  '....####....',
-  '..########..',
-  '.##########.',
-  '.####..####.',
-  '.####..####.',
-  '..########..',
-  '..########..',
-  '...##..##...',
-  '...##..##...',
-  '...##..##...',
-  '...##..##...',
-  '..##....##..',
-  '..##....##..',
-];
-
-const CHARACTER_COLORS = {
-  skin: '#e8b87a',
-  outline: '#5a4030',
-  shirt: '#5588cc',
-  pants: '#445566',
-  shoes: '#444444',
-  hair: '#553322',
-};
-
-// Which rows map to which body part
-const CHARACTER_ZONES = {
-  hat: [[0,1],[1,1],[2,1]],
-  hair: [[0,0],[1,0],[2,0]],
-  shirt: [[4,1],[5,1],[6,1],[7,1],[8,1],[9,1]],
-  pants: [[10,1],[11,1],[12,1],[13,1]],
-  shoes: [[14,1],[15,1]],
-};
-
-function getCharacterPixelColor(x, y, equipped) {
-  const ch = CHARACTER_BASE[y];
-  if (!ch || ch[x] !== '#') return null;
-  // head area (rows 0-3)
-  if (y <= 3) return CHARACTER_COLORS.skin;
-  // shirt area (rows 4-9)
-  if (y >= 4 && y <= 9) {
-    const color = equipped.shirt ? (LOOT_ITEMS.shirt.find(i=>i.name===equipped.shirt)||{}).color : CHARACTER_COLORS.shirt;
-    return color || CHARACTER_COLORS.shirt;
-  }
-  // pants area (rows 10-13)
-  if (y >= 10 && y <= 13) {
-    const color = equipped.pants ? (LOOT_ITEMS.pants.find(i=>i.name===equipped.pants)||{}).color : CHARACTER_COLORS.pants;
-    return color || CHARACTER_COLORS.pants;
-  }
-  // shoes area (rows 14-15)
-  if (y >= 14) {
-    const color = equipped.shoes ? (LOOT_ITEMS.shoes.find(i=>i.name===equipped.shoes)||{}).color : CHARACTER_COLORS.shoes;
-    return color || CHARACTER_COLORS.shoes;
-  }
-  return CHARACTER_COLORS.skin;
-}
-
-function renderCharacterSVG(equipped, size) {
-  equipped = equipped || {};
-  size = size || 48;
-  const rows = CHARACTER_BASE.length;
-  const cols = CHARACTER_BASE[0].length;
-  let rects = '';
-
-  // draw base character
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      const c = getCharacterPixelColor(x, y, equipped);
-      if (c) rects += '<rect x="'+x+'" y="'+y+'" width="1" height="1" fill="'+c+'"/>';
-    }
-  }
-
-  // hat overlay (rows 0-2, above head)
-  if (equipped.hat) {
-    const hatItem = LOOT_ITEMS.hat.find(i=>i.name===equipped.hat);
-    if (hatItem) {
-      // draw hat on top of head
-      for (let x = 3; x <= 8; x++) {
-        rects += '<rect x="'+x+'" y="0" width="1" height="1" fill="'+hatItem.color+'"/>';
-        rects += '<rect x="'+x+'" y="1" width="1" height="1" fill="'+hatItem.color+'"/>';
-      }
-      // brim
-      for (let x = 2; x <= 9; x++) {
-        rects += '<rect x="'+x+'" y="2" width="1" height="1" fill="'+hatItem.color+'"/>';
-      }
-    }
-  }
-
-  // accessory overlay (wrist area, rows 6-7)
-  if (equipped.accessory) {
-    const accItem = LOOT_ITEMS.accessory.find(i=>i.name===equipped.accessory);
-    if (accItem) {
-      rects += '<rect x="1" y="7" width="1" height="1" fill="'+accItem.color+'"/>';
-      rects += '<rect x="10" y="7" width="1" height="1" fill="'+accItem.color+'"/>';
-    }
-  }
-
-  return '<svg viewBox="0 0 '+cols+' '+rows+'" width="'+size+'" height="'+(size * rows/cols)+'" style="image-rendering:pixelated">'+rects+'</svg>';
-}
-
-function renderHomeCharacter() {
-  const el = document.getElementById('home-character');
-  if (el) el.innerHTML = renderCharacterSVG(state.equipped, 36);
-}
-
-function openInventory() {
-  renderInventory();
-  document.getElementById('inventory-overlay').classList.add('open');
-}
-
-function closeInventory() {
-  document.getElementById('inventory-overlay').classList.remove('open');
-}
-
-function renderInventory() {
-  // character preview
-  document.getElementById('inventory-character').innerHTML = renderCharacterSVG(state.equipped, 96);
-
-  const slots = ['hat','shirt','pants','shoes','accessory'];
-  let h = '';
-  slots.forEach(slot => {
-    h += '<div class="inventory-slot-label">' + slot + (state.equipped[slot] ? ' -- ' + state.equipped[slot] : '') + '</div>';
-    h += '<div class="inventory-items">';
-    const items = (state.inventory || []).filter(i => i.slot === slot);
-    // deduplicate by name
-    const seen = {};
-    items.forEach(i => { seen[i.name] = i; });
-    Object.values(seen).forEach(item => {
-      const isEquipped = state.equipped[slot] === item.name;
-      h += '<div class="inventory-item ' + item.rarity + (isEquipped ? ' equipped' : '') + '" onclick="toggleEquip(\'' + slot + '\',\'' + item.name.replace(/'/g,"\\'") + '\')" title="' + item.name + '">';
-      h += '<div style="width:28px;height:28px;background:' + item.color + ';border-radius:4px;"></div>';
-      h += '</div>';
-    });
-    if (!Object.keys(seen).length) h += '<span class="small dim" style="padding:8px 0;">No items</span>';
-    h += '</div>';
-  });
-  document.getElementById('inventory-slots').innerHTML = h;
-}
-
-async function toggleEquip(slot, itemName) {
-  if (state.equipped[slot] === itemName) {
-    state.equipped[slot] = null;
-  } else {
-    state.equipped[slot] = itemName;
-  }
-  await dbSet('equipped', state.equipped);
-  renderInventory();
-  renderHomeCharacter();
-}
-
-async function loadCharacter() {
-  state.inventory = await dbGet('inventory') || [];
-  state.equipped = await dbGet('equipped') || { hat:null, shirt:null, pants:null, shoes:null, accessory:null };
-  renderHomeCharacter();
-}
-
-// ============================================
 // UTILS
 // ============================================
 
@@ -2686,7 +2462,7 @@ function toast(msg, isError) {
   setTimeout(() => e.className = 'toast', 2500);
 }
 
-document.querySelectorAll('.overlay, .inventory-overlay').forEach(o => {
+document.querySelectorAll('.overlay, .award-overlay').forEach(o => {
   o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
 });
 
