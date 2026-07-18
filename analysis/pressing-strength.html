@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pressing Strength Analysis</title>
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --panel: #12161b;
+      --panel-2: #171c22;
+      --grid: #29313b;
+      --text: #eef2f6;
+      --muted: #929daa;
+      --bench: #f0a84b;
+      --incline: #58a6ff;
+      --combined: #77d98b;
+      --danger: #ef6a6a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 15% 0%, #17202a 0, var(--bg) 36rem);
+      color: var(--text);
+      font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 40px 0 56px; }
+    .eyebrow { color: var(--combined); font-size: 12px; font-weight: 750; letter-spacing: .13em; text-transform: uppercase; }
+    h1 { margin: 7px 0 8px; font-size: clamp(28px, 4vw, 44px); line-height: 1.05; letter-spacing: -.04em; }
+    .lede { max-width: 760px; margin: 0; color: var(--muted); font-size: 15px; }
+    .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 26px 0 18px; }
+    .card, .panel { border: 1px solid #242c35; background: color-mix(in srgb, var(--panel) 94%, transparent); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.22); }
+    .card { padding: 16px; min-height: 112px; }
+    .card .label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .card .value { margin: 7px 0 2px; font: 750 29px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .card .detail { color: var(--muted); font-size: 12px; }
+    .panel { margin-top: 14px; padding: 20px; overflow: hidden; }
+    .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 12px; }
+    h2 { margin: 0 0 4px; font-size: 18px; letter-spacing: -.02em; }
+    .sub { margin: 0; color: var(--muted); font-size: 12px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .key { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 18px; height: 3px; border-radius: 4px; }
+    svg { width: 100%; height: auto; display: block; overflow: visible; }
+    .axis { fill: var(--muted); font-size: 11px; }
+    .grid { stroke: var(--grid); stroke-width: 1; }
+    .baseline { stroke: #657180; stroke-width: 1.2; stroke-dasharray: 5 5; }
+    .series { fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+    .point { stroke: var(--panel); stroke-width: 2; }
+    .annotation { fill: var(--muted); font-size: 11px; }
+    .note-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+    .note { background: var(--panel-2); border-radius: 10px; padding: 13px 14px; color: var(--muted); font-size: 12px; }
+    .note strong { color: var(--text); }
+    .method { margin-top: 14px; color: var(--muted); font-size: 11px; }
+    @media (max-width: 760px) {
+      .cards { grid-template-columns: 1fr 1fr; }
+      .panel-head { display: block; }
+      .legend { margin-top: 10px; }
+      .note-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Barbell bench + incline dumbbell press</div>
+  <h1>Pressing strength is flat across the observed period.</h1>
+  <p class="lede">The combined index normalizes each movement to its own early baseline. This avoids adding barbell pounds to per-dumbbell pounds and keeps strength separate from interval and training intensity.</p>
+
+  <section class="cards" aria-label="Summary metrics">
+    <div class="card"><div class="label">Current combined</div><div class="value" style="color:var(--combined)">101.5</div><div class="detail">+1.5% versus baseline</div></div>
+    <div class="card"><div class="label">Combined peak gap</div><div class="value">−1.1%</div><div class="detail">Near the best concurrent level</div></div>
+    <div class="card"><div class="label">Interval association</div><div class="value">ρ .14</div><div class="detail">Permutation p = .72</div></div>
+    <div class="card"><div class="label">Analyzed dose</div><div class="value">65</div><div class="detail">31 bench + 34 incline sets</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div><h2>Pressing capacity over time</h2><p class="sub">Index: 100 = each exercise's median early-session baseline</p></div>
+      <div class="legend">
+        <span class="key"><i class="swatch" style="background:var(--bench)"></i>Bench</span>
+        <span class="key"><i class="swatch" style="background:var(--incline)"></i>Incline DB</span>
+        <span class="key"><i class="swatch" style="background:var(--combined)"></i>Combined</span>
+      </div>
+    </div>
+    <svg id="timeline" viewBox="0 0 1060 420" role="img" aria-label="Line chart of bench, incline dumbbell, and combined pressing strength from March to July 2026"></svg>
+    <div class="note-grid">
+      <div class="note"><strong>Outlier treatment:</strong> June 20 is excluded from the trajectory and from interval-response pairs.</div>
+      <div class="note"><strong>July 8:</strong> incline and bench are both slightly above their early baselines, without a sustained upward trend.</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div><h2>Training interval vs next-session response</h2><p class="sub">Each point is a shared bench + incline session. Color indicates hard-set share in the prior session.</p></div>
+      <div class="legend"><span class="key"><i class="swatch" style="background:#f5cf66"></i>Lower hard share</span><span class="key"><i class="swatch" style="background:var(--danger)"></i>Higher hard share</span></div>
+    </div>
+    <svg id="scatter" viewBox="0 0 1060 360" role="img" aria-label="Scatter plot of days between pressing sessions and next-session combined strength response"></svg>
+    <div class="note-grid">
+      <div class="note"><strong>No fitted interval effect:</strong> points vary widely at similar intervals, and the rank correlation is only .14.</div>
+      <div class="note"><strong>Intensity is not explanatory yet:</strong> high-hard-set sessions are not consistently followed by either improvement or decline.</div>
+    </div>
+  </section>
+
+  <p class="method">Method: feel-adjusted Epley capacity, default sensitivity mapping H/G/L = 0/2/4 reserve reps; mean of the two strongest sets at 12 reps or fewer. High-rep sets remain in dose calculations. Combined index is the geometric mean of separately normalized exercise indices. June 20 is excluded as an outlier. Conclusions were checked across alternate effort mappings and top-one/top-two estimators.</p>
+</main>
+<script>
+  const series = [
+    {date:'2026-03-14', bench:100.0, incline:100.3, combined:100.1, hard:.667},
+    {date:'2026-03-24', bench:98.6, incline:91.4, combined:94.9, hard:.500},
+    {date:'2026-04-04', bench:105.3, incline:100.0, combined:102.6, hard:.667},
+    {date:'2026-04-12', bench:106.0, incline:95.3, combined:100.5, hard:.429},
+    {date:'2026-04-25', bench:105.5, incline:98.2, combined:101.8, hard:.500},
+    {date:'2026-05-17', bench:101.2, incline:93.8, combined:97.4, hard:.571},
+    {date:'2026-05-30', bench:101.4, incline:92.8, combined:97.0, hard:.500},
+    {date:'2026-06-14', bench:103.1, incline:98.5, combined:100.8, hard:.667},
+    {date:'2026-06-27', bench:94.7, incline:105.6, combined:100.0, hard:.333},
+    {date:'2026-07-08', bench:101.4, incline:101.6, combined:101.5, hard:.167}
+  ].map(d => ({...d, time:new Date(d.date+'T00:00:00Z').getTime()}));
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (name, attrs={}, text='') => {
+    const n = document.createElementNS(NS, name);
+    Object.entries(attrs).forEach(([k,v]) => n.setAttribute(k,v));
+    if (text) n.textContent = text;
+    return n;
+  };
+  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const fmtDate = d => new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',timeZone:'UTC'}).format(new Date(d+'T00:00:00Z'));
+
+  function drawTimeline() {
+    const svg = document.querySelector('#timeline');
+    const W=1060,H=420,m={l:54,r:58,t:25,b:46};
+    const minT=series[0].time,maxT=series.at(-1).time,yMin=80,yMax=108;
+    const x=t=>m.l+(t-minT)/(maxT-minT)*(W-m.l-m.r);
+    const y=v=>m.t+(yMax-v)/(yMax-yMin)*(H-m.t-m.b);
+    [85,90,95,100,105].forEach(v=>{
+      svg.append(el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),class:v===100?'baseline':'grid'}));
+      svg.append(el('text',{x:m.l-10,y:y(v)+4,'text-anchor':'end',class:'axis'},String(v)));
+    });
+    const ticks=['2026-03-14','2026-04-01','2026-05-01','2026-06-01','2026-07-01'];
+    ticks.forEach(d=>{
+      const xx=x(new Date(d+'T00:00:00Z').getTime());
+      svg.append(el('line',{x1:xx,x2:xx,y1:m.t,y2:H-m.b,class:'grid'}));
+      svg.append(el('text',{x:xx,y:H-17,'text-anchor':'middle',class:'axis'},fmtDate(d)));
+    });
+    const defs=[['bench','--bench'],['incline','--incline'],['combined','--combined']];
+    defs.forEach(([key,colorVar])=>{
+      const color=css(colorVar);
+      const d=series.map((p,i)=>(i?'L':'M')+x(p.time).toFixed(1)+','+y(p[key]).toFixed(1)).join(' ');
+      svg.append(el('path',{d,class:'series',stroke:color}));
+      series.forEach(p=>{
+        const c=el('circle',{cx:x(p.time),cy:y(p[key]),r:key==='combined'?5:4,fill:color,class:'point'});
+        c.append(el('title',{},`${fmtDate(p.date)} · ${key}: ${p[key].toFixed(1)}`));
+        svg.append(c);
+      });
+    });
+    const last=series.at(-1);
+    svg.append(el('text',{x:x(last.time)+10,y:y(last.combined)+4,fill:css('--combined'),'font-size':12,'font-weight':750},'101.5'));
+  }
+
+  function mixColor(t) {
+    const a=[245,207,102], b=[239,106,106];
+    const q=Math.max(0,Math.min(1,(t-.3)/.6));
+    return `rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*q)).join(',')})`;
+  }
+  function drawScatter() {
+    const svg=document.querySelector('#scatter');
+    const W=1060,H=360,m={l:60,r:28,t:24,b:50},xMin=5,xMax=23,yMin=-15,yMax=15;
+    const x=v=>m.l+(v-xMin)/(xMax-xMin)*(W-m.l-m.r);
+    const y=v=>m.t+(yMax-v)/(yMax-yMin)*(H-m.t-m.b);
+    [-10,-5,0,5,10].forEach(v=>{
+      svg.append(el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),class:v===0?'baseline':'grid'}));
+      svg.append(el('text',{x:m.l-10,y:y(v)+4,'text-anchor':'end',class:'axis'},`${v>0?'+':''}${v}%`));
+    });
+    [6,8,10,12,14,16,18,20,22].forEach(v=>{
+      svg.append(el('line',{x1:x(v),x2:x(v),y1:m.t,y2:H-m.b,class:'grid'}));
+      svg.append(el('text',{x:x(v),y:H-20,'text-anchor':'middle',class:'axis'},String(v)));
+    });
+    svg.append(el('text',{x:(m.l+W-m.r)/2,y:H-2,'text-anchor':'middle',class:'axis'},'Days since prior shared pressing session'));
+    const points=[];
+    for(let i=1;i<series.length;i++){
+      const prev=series[i-1],cur=series[i];
+      const gap=Math.round((cur.time-prev.time)/86400000);
+      const change=(cur.combined/prev.combined-1)*100;
+      points.push({date:cur.date,gap,change,hard:prev.hard});
+    }
+    points.forEach(p=>{
+      const c=el('circle',{cx:x(p.gap),cy:y(p.change),r:6.5,fill:mixColor(p.hard),stroke:'#12161b','stroke-width':2});
+      c.append(el('title',{},`${fmtDate(p.date)} · ${p.gap} days · ${p.change>=0?'+':''}${p.change.toFixed(1)}% · prior hard sets ${Math.round(p.hard*100)}%`));
+      svg.append(c);
+      if(Math.abs(p.change)>10) svg.append(el('text',{x:x(p.gap)+10,y:y(p.change)+4,class:'annotation'},fmtDate(p.date)));
+    });
+  }
+  drawTimeline();
+  drawScatter();
+</script>
+</body>
+</html>
