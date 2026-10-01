@@ -85,8 +85,10 @@ test('picker opens on Frequent, ranked by usage count then recency', () => {
   const app = setup();
   app.run('openExercisePicker()');
   assert.equal(app.run('picker.group'), 'frequent');
-  // Bench and Leg Press tie on count and last date, so name breaks the tie.
-  assert.deepEqual(rowNames(app), ['Barbell Squat', 'Barbell Bench Press', 'Leg Press', 'My Odd Machine', 'Lying Leg Curls']);
+  // Quads and chest were both last trained 10 days ago, so they lead as Due (quads has more
+  // sessions); the rest follow by usage. Lying Leg Curls was logged once, too little to nag about.
+  assert.deepEqual(rowNames(app), ['Barbell Squat', 'Leg Press', 'Barbell Bench Press', 'My Odd Machine', 'Lying Leg Curls']);
+  assert.match(app.el('exercise-list').innerHTML, /Due · Quads <span class="due-days">10 days/);
   assert.match(app.el('picker-groups').innerHTML, /★ Frequent<span class="chip-count">5/);
   assert.match(app.el('exercise-list').innerHTML, /3× · /);
 });
@@ -138,11 +140,11 @@ test('several exercises can be ticked and added in one go, prefilled from histor
   assert.equal(app.el('picker-add-btn').textContent, 'Add 2 exercises');
   assert.equal(app.el('picker-add-btn').disabled, false);
   app.run('addPickedExercises()');
-  assert.deepEqual(runJson(app, 'state.currentWorkout.exercises.map(e => e.exerciseName)'), ['Barbell Squat', 'Barbell Bench Press']);
+  assert.deepEqual(runJson(app, 'state.currentWorkout.exercises.map(e => e.exerciseName)'), ['Barbell Squat', 'Leg Press']);
   assert.equal(app.run('state.currentWorkout.exercises[0].sets[0].weight'), 50);
   assert.equal(app.el('exercise-picker').classList.contains('open'), false);
   // Already-added exercises are shown as such and can't be ticked again.
-  app.run('openExercisePicker(); pickExercise(0)');
+  app.run("openExercisePicker(); pickExercise(picker.rows.findIndex(r => r.name === 'Barbell Squat'))");
   assert.equal(app.run('picker.selected.length'), 0);
   assert.match(app.el('exercise-list').innerHTML, /exercise-option added/);
 });
@@ -175,10 +177,11 @@ test('exercises from your presets lead the ones you have never logged', () => {
 
 test('lifts you stopped doing drop below your current ones', () => {
   const app = loadApp();
-  const old = Array.from({ length: 6 }, (_, i) => workout(200 + i * 7, ['Barbell Deadlift']));
-  const recent = [workout(3, ['Barbell Squat']), workout(10, ['Barbell Squat'])];
+  // Same muscle (quads, trained today so not Due): the recent lift outranks the once-frequent one.
+  const old = Array.from({ length: 6 }, (_, i) => workout(200 + i * 7, ['Barbell Squat']));
+  const recent = [workout(0, ['Leg Press']), workout(2, ['Leg Press'])];
   app.run(`state.workoutHistory = ${JSON.stringify(recent.concat(old))}; startWorkout(); openExercisePicker();`);
-  assert.deepEqual(rowNames(app), ['Barbell Squat', 'Barbell Deadlift']);
+  assert.deepEqual(rowNames(app), ['Leg Press', 'Barbell Squat']);
 });
 
 test('replace opens on the muscle of the exercise being replaced', () => {
@@ -187,4 +190,33 @@ test('replace opens on the muscle of the exercise being replaced', () => {
   assert.equal(app.run('picker.group'), 'Legs');
   assert.equal(app.run('picker.muscle'), 'hamstrings');
   assert.equal(rowNames(app)[0], 'Lying Leg Curls');
+});
+
+test('Due suggests your exercises for the muscles you have neglected longest', () => {
+  const app = loadApp();
+  const history = [
+    workout(1, ['Barbell Squat', 'Leg Press']), workout(4, ['Barbell Squat']),
+    workout(2, ['Barbell Bench Press']), workout(9, ['Barbell Bench Press']),
+    workout(15, ['Wide-Grip Lat Pulldown', 'Seated Cable Rows']), workout(22, ['Wide-Grip Lat Pulldown', 'Seated Cable Rows']),
+    workout(30, ['Barbell Deadlift']), workout(40, ['Barbell Deadlift']),
+    workout(50, ['Side Lateral Raise']),
+  ];
+  app.run(`state.workoutHistory = ${JSON.stringify(history)}; startWorkout(); openExercisePicker();`);
+  const due = runJson(app, 'getDueMuscles(getPickerCandidates(), new Set()).map(m => [m.muscle, m.days, m.exercises.map(e => e.name)])');
+  // Shoulders: one session only, ignored. Quads/chest: trained within 3 days, not due.
+  assert.deepEqual(due, [
+    ['lower back', 30, ['Barbell Deadlift']],
+    ['lats', 15, ['Wide-Grip Lat Pulldown']],
+    ['middle back', 15, ['Seated Cable Rows']],
+  ]);
+  assert.deepEqual(rowNames(app).slice(0, 3), ['Barbell Deadlift', 'Wide-Grip Lat Pulldown', 'Seated Cable Rows']);
+  // A muscle already in this workout drops out of Due; "More" jumps to that muscle's full list.
+  app.run("pickExercise(0); addPickedExercises(); openExercisePicker()");
+  assert.equal(rowNames(app)[0], 'Wide-Grip Lat Pulldown');
+  app.run("showPickerMuscle('Back', 'lats')");
+  assert.equal(app.run('picker.group + \'/\' + picker.muscle'), 'Back/lats');
+  // Searching hides Due.
+  app.el('exercise-search').value = 'press';
+  app.run('setPickerGroup(\'frequent\')');
+  assert.doesNotMatch(app.el('exercise-list').innerHTML, /Due ·/);
 });

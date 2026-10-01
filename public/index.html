@@ -100,6 +100,9 @@
   .exercise-option.selected .ex-check { background: var(--accent); border-color: var(--accent); color: #0a0a0a; }
   .exercise-option.added { opacity: 0.45; }
   .exercise-option.added .ex-check { border-color: var(--green); color: var(--green); }
+  .due-label { display: flex; align-items: center; justify-content: space-between; color: var(--red); padding-top: 12px; padding-bottom: 4px; }
+  .due-label .due-days { color: var(--text-faint); font: 500 11px var(--mono); text-transform: none; letter-spacing: 0; margin-left: 4px; }
+  .due-label .btn-ghost { font-size: 12px; padding: 4px 0 4px 12px; }
   .picker-note { font-size: 12px; color: var(--text-dim); padding: 12px 0 0; }
 
   .workout-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
@@ -1699,10 +1702,14 @@ function renderExercisePicker() {
     note = 'Exercises you log will show up here, most used first. Pick a muscle group above to browse.';
   }
 
-  const mine = scope.filter(e => e.usage.count > 0).sort(compareByUsage);
+  // On Frequent, lead with your exercises for the muscles you've gone longest without training.
+  const due = picker.group === 'frequent' && !terms.length ? getDueMuscles(all, inWorkout) : [];
+  const dueRows = due.flatMap(m => m.exercises);
+  const dueNames = new Set(dueRows.map(e => e.name));
+  const mine = scope.filter(e => e.usage.count > 0 && !dueNames.has(e.name)).sort(compareByUsage);
   const restAll = picker.group === 'frequent' ? [] : scope.filter(e => !e.usage.count).sort(compareUnused);
   const rest = picker.showAll ? restAll : restAll.slice(0, PICKER_REST_LIMIT);
-  picker.rows = mine.concat(rest);
+  picker.rows = dueRows.concat(mine, rest);
 
   const groupLabel = picker.muscle ? titleCase(picker.muscle) : PICKER_GROUPS.includes(picker.group) ? picker.group : '';
   const row = (e, i) => {
@@ -1716,14 +1723,52 @@ function renderExercisePicker() {
       '<span class="ex-check">✓</span></div>';
   };
   let h = note ? '<p class="picker-note">'+note+'</p>' : '';
+  let at = 0;
+  due.forEach(m => {
+    h += '<div class="exercise-group-label due-label"><span>Due · '+titleCase(m.muscle)+' <span class="due-days">'+m.days+' days</span></span>'+
+      '<button class="btn-ghost" onclick="showPickerMuscle(\''+m.group+'\',\''+m.muscle+'\')">More</button></div>';
+    h += m.exercises.map(e => row(e, at++)).join('');
+  });
+  if (due.length && mine.length) h += '<div class="exercise-group-label">Frequent</div>';
   if (mine.length && rest.length) h += '<div class="exercise-group-label">Yours'+(groupLabel ? ' · '+groupLabel : '')+'</div>';
-  h += mine.map((e, i) => row(e, i)).join('');
+  h += mine.map(e => row(e, at++)).join('');
   if (rest.length && (mine.length || !terms.length)) h += '<div class="exercise-group-label">'+(mine.length ? 'More' : 'All')+(groupLabel ? ' · '+groupLabel : ' exercises')+'</div>';
-  h += rest.map((e, i) => row(e, mine.length + i)).join('');
+  h += rest.map(e => row(e, at++)).join('');
   if (restAll.length > rest.length) h += '<button class="add-set-btn" onclick="showAllPickerRows()">Show all '+restAll.length+'</button>';
   if (!picker.rows.length && !note) h = '<div class="empty-state"><p>No exercises found</p></div>';
   document.getElementById('exercise-list').innerHTML = h;
   updatePickerFoot();
+}
+
+const DUE_MIN_DAYS = 3;       // a muscle trained more recently than this isn't "due"
+const DUE_MUSCLES = 3;        // how many neglected muscles to suggest
+const DUE_PER_MUSCLE = 2;     // how many of your exercises to suggest for each
+
+// Muscles you train (primary muscle of 2+ logged workouts) ranked by days since last trained,
+// each with your most-used exercises for it. Muscles already in this workout are skipped.
+function getDueMuscles(candidates, inWorkout) {
+  const byMuscle = {};
+  candidates.forEach(e => {
+    if (!e.muscle || !e.usage.count) return;
+    const m = byMuscle[e.muscle] || (byMuscle[e.muscle] = { muscle: e.muscle, group: e.muscleGroup, last: 0, sessions: 0, exercises: [] });
+    m.last = Math.max(m.last, e.usage.last);
+    m.sessions += e.usage.count;
+    m.exercises.push(e);
+  });
+  const training = new Set(candidates.filter(e => inWorkout.has(e.name) && e.muscle).map(e => e.muscle));
+  const now = Date.now();
+  return Object.values(byMuscle)
+    .map(m => Object.assign(m, { days: Math.floor((now - m.last) / 86400000) }))
+    .filter(m => m.sessions >= 2 && m.days >= DUE_MIN_DAYS && !training.has(m.muscle))
+    .sort((a, b) => b.days - a.days || b.sessions - a.sessions || a.muscle.localeCompare(b.muscle))
+    .slice(0, DUE_MUSCLES)
+    .map(m => Object.assign(m, { exercises: m.exercises.filter(e => !inWorkout.has(e.name)).sort(compareByUsage).slice(0, DUE_PER_MUSCLE) }))
+    .filter(m => m.exercises.length);
+}
+
+function showPickerMuscle(group, muscle) {
+  setPickerGroup(group);
+  setPickerMuscle(muscle);
 }
 
 function showAllPickerRows() {
