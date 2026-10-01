@@ -273,16 +273,23 @@
     return match ? { primary: [match[1]], secondary: [], inferred: true } : { primary: [], secondary: [], inferred: true };
   }
 
+  // Exercises done with body weight alone, so a set logged with weight 0 is real work.
+  function isBodyweightExercise(name, equipment) {
+    const eq = equipment || [];
+    return (eq.length > 0 && eq.every(item => item === 'none')) || /pull[- ]?ups?\b|chin-?ups?|\bdips?\b|muscle up|hanging/.test(name);
+  }
+
   function buildExerciseMap(exerciseDb) {
     const exercises = Array.isArray(exerciseDb) ? exerciseDb : (exerciseDb && exerciseDb.exercises) || [];
     const result = {};
     exercises.forEach(exercise => {
       const primary = [...new Set((exercise.primary_muscles || []).map(muscle => RAW_MUSCLE_MAP[String(muscle).toLowerCase()]).filter(Boolean))];
       const secondary = [...new Set((exercise.secondary_muscles || []).map(muscle => RAW_MUSCLE_MAP[String(muscle).toLowerCase()]).filter(group => group && !primary.includes(group)))];
-      result[String(exercise.name || '').toLowerCase()] = { primary, secondary, inferred: false };
+      const name = String(exercise.name || '').toLowerCase();
+      result[name] = { primary, secondary, inferred: false, bodyweight: isBodyweightExercise(name, exercise.equipment) };
     });
     Object.entries(EXERCISE_MUSCLE_OVERRIDES).forEach(([name, muscles]) => {
-      result[name] = { primary: [...muscles.primary], secondary: [...muscles.secondary], inferred: false };
+      result[name] = { primary: [...muscles.primary], secondary: [...muscles.secondary], inferred: false, bodyweight: Boolean(result[name] && result[name].bodyweight) };
     });
     return result;
   }
@@ -291,13 +298,24 @@
     return state._exerciseMap[String(exerciseName || '').toLowerCase()] || fallbackMuscles(exerciseName);
   }
 
-  function validWorkingSets(sets) {
-    return (sets || []).map(normalizeSet).filter(set => set.weight > 0 && set.reps > 0);
+  // mode 'load' scores weighted sets (sets without weight are ignored); mode 'reps' scores
+  // bodyweight exercises by reps alone, whatever weight was entered.
+  function validWorkingSets(sets, mode) {
+    return (sets || []).map(normalizeSet).filter(set => set.reps > 0 && (mode === 'reps' || set.weight > 0));
   }
 
-  function sessionCapacity(sets, config) {
-    const valid = validWorkingSets(sets);
+  function sessionCapacity(sets, config, mode) {
+    const valid = validWorkingSets(sets, mode);
     if (!valid.length) return null;
+    if (mode === 'reps') {
+      // Reps aren't capped here: more reps is how bodyweight work progresses.
+      const capacities = valid.map(set => {
+        const effort = Object.prototype.hasOwnProperty.call(config.feelRir, set.effort) ? set.effort : 'missing';
+        return 1 + (set.reps + config.feelRir[effort]) / 30;
+      }).sort((a, b) => b - a);
+      const take = capacities.slice(0, Math.min(config.capacityTopSets, capacities.length));
+      return { value: take.reduce((sum, value) => sum + value, 0) / take.length, validSetCount: valid.length, scoredSetCount: valid.length, usedHighRepFallback: false };
+    }
     let eligible = valid.filter(set => set.reps <= config.maxStrengthReps);
     const usedHighRepFallback = eligible.length === 0;
     if (usedHighRepFallback) eligible = valid;
@@ -313,6 +331,17 @@
       scoredSetCount: eligible.length,
       usedHighRepFallback,
     };
+  }
+
+  // A bodyweight exercise is scored by reps when it was first logged without weight, so its
+  // baseline and later sessions stay comparable. Anything first logged with weight keeps
+  // scoring by load and ignoring sets without weight, as it always has.
+  function scoringMode(state, exercise, muscles) {
+    const tracked = state.exercises[String(exercise.exerciseName).toLowerCase()];
+    if (tracked && tracked.mode) return tracked.mode;
+    if (!muscles.bodyweight) return 'load';
+    const sets = (exercise.sets || []).map(normalizeSet).filter(set => set.reps > 0);
+    return sets.length && sets.every(set => set.weight <= 0) ? 'reps' : 'load';
   }
 
   function emptyMuscleState(name) {
@@ -484,9 +513,10 @@
 
     const basePointTotals = {};
     normalized.exercises.forEach(exercise => {
-      const validSets = validWorkingSets(exercise.sets);
-      if (!validSets.length) return;
       const muscles = resolveMuscles(state, exercise.exerciseName);
+      const mode = scoringMode(state, exercise, muscles);
+      const validSets = validWorkingSets(exercise.sets, mode);
+      if (!validSets.length) return;
       if (!muscles.primary.length) {
         const warning = `No muscle mapping for ${exercise.exerciseName}`;
         event.warnings.push(warning);
@@ -508,9 +538,10 @@
         addReason(eventGroup(event, group), `secondary work from ${exercise.exerciseName}`);
       });
 
-      const capacity = sessionCapacity(validSets, config);
+      const capacity = sessionCapacity(validSets, config, mode);
       if (!capacity) return;
       const tracked = exerciseState(state, exercise.exerciseName, muscles);
+      tracked.mode = tracked.mode || mode;
       const previousPeak = tracked.sessions.length ? Math.max(...tracked.sessions.map(session => session.capacity)) : null;
       tracked.sessions.push({ workoutId: normalized.id, date: normalized.date, capacity: capacity.value });
       refreshExerciseStats(tracked, config);

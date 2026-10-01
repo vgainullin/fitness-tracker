@@ -185,3 +185,30 @@ test('v1 and v2 histories produce the same progress snapshot', () => {
   const v2 = MP.getProgressSnapshot(MP.replayHistory({sets:v2Sets}, exerciseDb));
   assert.deepEqual(v1, v2);
 });
+
+test('bodyweight sets without weight count, scored by reps', () => {
+  const db = { exercises: [{ name: 'Pushups', equipment: ['none'], primary_muscles: ['chest'], secondary_muscles: ['triceps'] }] };
+  const history = [10, 12, 14, 16].map((reps, i) =>
+    workout(`p${i}`, `2026-01-0${i + 1}`, 'Pushups', [set(0, reps, 'good'), set(0, reps - 2, 'good')]));
+  const state = MP.replayHistory(history, db);
+  const tracked = state.exercises.pushups;
+  assert.equal(tracked.mode, 'reps');
+  assert.equal(tracked.sessions.length, 4);
+  assert.ok(tracked.currentIndex > 100, 'more reps than the baseline raises the index');
+  assert.ok(state.muscles.Chest.points > 0);
+});
+
+test('weightless sets of weighted exercises are still ignored', () => {
+  const db = { exercises: [
+    { name: 'Bench', equipment: ['barbell'], primary_muscles: ['chest'], secondary_muscles: [] },
+    { name: 'Pullups', equipment: ['none'], primary_muscles: ['lats'], secondary_muscles: [] },
+  ] };
+  const state = MP.replayHistory([
+    workout('a', '2026-01-01', 'Bench', [set(0, 10, 'good')]),
+    workout('b', '2026-01-02', 'Pullups', [set(20, 8, 'good')]),
+    workout('c', '2026-01-03', 'Pullups', [set(0, 12, 'good')]),
+  ], db);
+  assert.equal(state.exercises.bench, undefined);
+  assert.equal(state.exercises.pullups.mode, 'load');
+  assert.equal(state.exercises.pullups.sessions.length, 1, 'a pull-up first logged with weight keeps scoring by load');
+});

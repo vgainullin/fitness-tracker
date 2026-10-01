@@ -20,6 +20,7 @@
     --accent: #e8a84c; --accent-dim: #b8843a;
     --red: #d45050; --green: #5aad6a; --blue: #5a8fd4; --purple: #9a6dd7;
     --border: #2a2a2a; --radius: 12px;
+    --accent-soft: rgba(232,168,76,0.12);
     --font: 'DM Sans', -apple-system, sans-serif;
     --mono: 'DM Mono', 'SF Mono', monospace;
     --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -73,38 +74,84 @@
   @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
   .overlay-handle { width: 36px; height: 4px; background: var(--bg-3); border-radius: 2px; margin: 0 auto 20px; }
 
-  .exercise-group-label { font-size: 12px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.8px; padding: 16px 0 8px; border-bottom: 1px solid var(--border); }
-  .exercise-option { display: flex; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); cursor: pointer; -webkit-tap-highlight-color: transparent; gap: 10px; }
-  .exercise-option:active { background: var(--bg-2); }
-  .exercise-option .ex-name { flex: 1; font-size: 15px; }
-  .exercise-option .pixel-icon, .exercise-option .ex-pictogram { flex-shrink: 0; }
-
-  /* Exercise picker */
-  #exercise-picker .picker-sheet { height: 85vh; height: 85dvh; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
-  .picker-head { flex-shrink: 0; }
-  .picker-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  /* Exercise picker. One scale throughout: 4px spacing steps, three text sizes
+     (15 names, 13 controls, 12 secondary, 11 labels), 44px tap targets. */
+  #exercise-picker .picker-sheet { height: 88vh; height: 88dvh; display: flex; flex-direction: column; overflow: hidden; padding: 8px 16px 0; }
+  #exercise-picker .overlay-handle { margin: 0 auto 12px; }
+  .picker-head { flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; padding-bottom: 4px; }
+  .picker-title-row { display: flex; align-items: center; justify-content: space-between; min-height: 32px; }
+  .picker-title-row h2 { font-size: 20px; }
+  .picker-title-row .btn-ghost { color: var(--text-dim); font-weight: 500; padding: 8px 0 8px 16px; }
+  .picker-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 8px; }
   .picker-body::-webkit-scrollbar { display: none; }
-  .picker-foot { flex-shrink: 0; padding: 12px 0 calc(16px + var(--safe-bottom)); border-top: 1px solid var(--border); }
-  .picker-foot .btn-primary:disabled { background: var(--bg-3); color: var(--text-faint); cursor: default; transform: none; }
-  .chip-row { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-top: 10px; }
+  .picker-foot { flex-shrink: 0; margin: 0 -16px; padding: 12px 16px calc(12px + var(--safe-bottom)); border-top: 1px solid var(--border); background: var(--bg-1); }
+  .picker-foot .btn-primary { min-height: 52px; }
+  .picker-foot .btn-primary:disabled { background: var(--bg-2); color: var(--text-faint); cursor: default; transform: none; }
+
+  .mode-toggle { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-2); border-radius: 10px; padding: 3px; }
+  .mode-toggle button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; background: none; border: none; border-radius: 8px; color: var(--text-dim); font: 600 14px var(--font); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 0.15s, color 0.15s; }
+  .mode-toggle button svg { width: 16px; height: 16px; }
+  .mode-toggle button.active { background: var(--bg-3); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+  .mode-toggle button.active svg { color: var(--accent); }
+
+  .picker-kit:empty { display: none; }
+  .kit-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; margin: -4px 0 -4px; padding: 0 2px; background: none; border: none; color: var(--text-dim); font: 400 13px var(--font); text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .kit-row svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--text-faint); }
+  .kit-row .kit-list { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kit-row .kit-edit { color: var(--accent); font-weight: 600; flex-shrink: 0; }
+
+  #exercise-search { min-height: 44px; padding: 10px 12px 10px 38px; font-size: 15px; border-radius: 10px; background: var(--bg-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235a5550' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E") no-repeat 12px 50%; }
+
+  .chip-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
   .chip-row::-webkit-scrollbar { display: none; }
   .chip-row:empty { display: none; }
-  .chip { flex-shrink: 0; background: var(--bg-2); border: 1px solid var(--border); border-radius: 20px; padding: 7px 13px; font-family: var(--font); font-size: 13px; font-weight: 600; color: var(--text-dim); cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; -webkit-tap-highlight-color: transparent; }
-  .chip.active { background: var(--accent); border-color: var(--accent); color: #0a0a0a; }
-  .chip .chip-count { font: 500 11px var(--mono); opacity: 0.7; }
-  .chip-row-sub .chip { font-size: 12px; font-weight: 500; padding: 5px 11px; }
-  .chip-row-sub .chip.active { background: rgba(232,168,76,0.15); color: var(--accent); }
-  .exercise-option .ex-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  .exercise-option .ex-meta { font-size: 12px; color: var(--text-faint); }
-  .exercise-option .ex-meta .used { color: var(--accent-dim); }
-  .exercise-option .ex-check { width: 24px; height: 24px; flex-shrink: 0; border: 1.5px solid var(--bg-3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: transparent; }
+  .chip-row > :last-child { margin-right: 24px; }
+  .chip { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 14px; background: none; border: 1px solid var(--border); border-radius: 999px; font: 500 13px var(--font); color: var(--text-dim); cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+  .chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .chip .chip-count { font-size: 12px; color: var(--text-faint); }
+  .chip.active .chip-count { color: var(--accent-dim); }
+  .chip-row-sub { margin-top: -4px; }
+  .chip-row-sub .chip { min-height: 30px; padding: 0 12px; font-size: 12px; border-color: transparent; background: var(--bg-2); }
+  .chip-row-sub .chip.active { background: var(--accent-soft); border-color: transparent; }
+
+  .exercise-group-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 20px 0 8px; font-size: 11px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.8px; }
+  .picker-body > #exercise-list > .exercise-group-label:first-child { padding-top: 12px; }
+  .due-label { color: var(--text); padding-bottom: 0; }
+  .due-label .due-title { display: inline-flex; align-items: center; gap: 8px; }
+  .due-label .due-title::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
+  .due-label .btn-link { background: none; border: none; color: var(--accent); font: 600 12px var(--font); text-transform: none; letter-spacing: 0; padding: 6px 0 6px 12px; cursor: pointer; }
+  .due-sub { font-size: 12px; color: var(--text-faint); padding: 0 0 4px 14px; }
+
+  .exercise-option { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .exercise-option:active { background: var(--bg-2); }
+  .exercise-option .ex-icon { width: 40px; height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--bg-2); border-radius: 10px; }
+  .exercise-option .ex-icon img, .exercise-option .ex-icon svg { width: 28px; height: 28px; }
+  .exercise-option .ex-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .exercise-option .ex-name { font-size: 15px; font-weight: 500; line-height: 1.3; }
+  .exercise-option .ex-meta { font-size: 12px; color: var(--text-faint); line-height: 1.3; }
+  .exercise-option .ex-meta .used { color: var(--text-dim); }
+  .exercise-option .ex-check { width: 24px; height: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-3); border-radius: 50%; font-size: 13px; font-weight: 700; color: transparent; transition: background 0.12s, border-color 0.12s; }
   .exercise-option.selected .ex-check { background: var(--accent); border-color: var(--accent); color: #0a0a0a; }
   .exercise-option.added { opacity: 0.45; }
   .exercise-option.added .ex-check { border-color: var(--green); color: var(--green); }
-  .due-label { display: flex; align-items: center; justify-content: space-between; color: var(--red); padding-top: 12px; padding-bottom: 4px; }
-  .due-label .due-days { color: var(--text-faint); font: 500 11px var(--mono); text-transform: none; letter-spacing: 0; margin-left: 4px; }
-  .due-label .btn-ghost { font-size: 12px; padding: 4px 0 4px 12px; }
-  .picker-note { font-size: 12px; color: var(--text-dim); padding: 12px 0 0; }
+  .picker-note { margin-top: 12px; padding: 12px; background: var(--bg-2); border-radius: 10px; font-size: 13px; color: var(--text-dim); line-height: 1.45; }
+  #picker-custom .btn-ghost { padding: 12px 0; font-size: 14px; }
+
+  .home-setup { padding-top: 8px; }
+  .home-setup .eyebrow { font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.8px; }
+  .home-setup h3 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; margin: 4px 0; }
+  .home-setup .setup-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 16px; }
+  .kit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .kit-card { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; padding: 0 12px 0 14px; background: var(--bg-2); border: 1px solid transparent; border-radius: 10px; color: var(--text); font: 500 14px var(--font); text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 0.12s, border-color 0.12s; }
+  .kit-card .ex-check { width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-3); border-radius: 50%; font-size: 11px; font-weight: 700; color: transparent; }
+  .kit-card.selected { background: var(--accent-soft); border-color: var(--accent); }
+  .kit-card.selected .ex-check { background: var(--accent); border-color: var(--accent); color: #0a0a0a; }
+  .kit-more { margin-top: 8px; }
+
+  .bw-hint { margin: 10px 0 2px; padding: 10px 12px; background: var(--bg-2); border-radius: 8px; font-size: 13px; color: var(--text-dim); }
+  .bw-hint b { color: var(--text); font-weight: 600; }
+  .bw-hint-next { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .pill-btn { flex-shrink: 0; min-height: 32px; padding: 0 16px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 999px; color: var(--accent); font: 600 13px var(--font); cursor: pointer; }
 
   .workout-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
   .workout-timer { font-family: var(--mono); font-size: 14px; color: var(--accent); background: rgba(232,168,76,0.1); padding: 6px 12px; border-radius: 20px; }
@@ -117,8 +164,11 @@
   .set-row.header span { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
   .set-num { font-family: var(--mono); font-size: 14px; color: var(--text-dim); text-align: center; }
   .set-row input[type="number"] { font-size: 17px; padding: 10px 6px; }
-  .set-input-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-  .prev-val { font-size: 10px; color: var(--text-faint); font-family: var(--mono); line-height: 1; }
+  /* Last session's value sits under its box without changing the box's height, so the
+     weight and reps boxes stay level whether or not each one has a previous value. */
+  .set-input-cell { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .prev-val { position: absolute; top: 100%; left: 0; right: 0; margin-top: 3px; text-align: center; font-size: 10px; color: var(--text-faint); font-family: var(--mono); line-height: 1; }
+  .set-row.has-prev { padding-bottom: 18px; }
   .set-delete { background: none; border: none; color: var(--text-faint); font-size: 18px; cursor: pointer; padding: 8px; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
   .set-delete:active { color: var(--red); background: rgba(212,80,80,0.1); }
 
@@ -432,17 +482,19 @@
 <div class="overlay" id="exercise-picker"><div class="overlay-sheet picker-sheet">
   <div class="picker-head">
     <div class="overlay-handle"></div>
-    <div class="flex items-center justify-between mb-12"><h2 id="picker-title">Add Exercises</h2><button class="btn-ghost" onclick="closeOverlay('exercise-picker')">Cancel</button></div>
-    <input type="text" id="exercise-search" placeholder="Search exercises..." oninput="picker.showAll=false;renderExercisePicker()">
+    <div class="picker-title-row"><h2 id="picker-title">Add Exercises</h2><button class="btn-ghost" onclick="closeOverlay('exercise-picker')">Cancel</button></div>
+    <div class="mode-toggle" id="picker-mode"></div>
+    <div class="picker-kit" id="picker-kit"></div>
+    <input type="text" id="exercise-search" placeholder="Search exercises" oninput="picker.showAll=false;renderExercisePicker()">
     <div class="chip-row" id="picker-groups"></div>
     <div class="chip-row chip-row-sub" id="picker-muscles"></div>
   </div>
   <div class="picker-body" id="picker-body">
     <div id="exercise-list"></div>
-    <div class="mt-8 mb-12"><button class="btn-ghost" onclick="showAddCustomExercise()" style="padding-left:0;font-size:14px;">+ Custom Exercise</button></div>
+    <div class="mt-8 mb-12" id="picker-custom"><button class="btn-ghost" onclick="showAddCustomExercise()" style="padding-left:0;font-size:14px;">+ Custom Exercise</button></div>
   </div>
   <div class="picker-foot" id="picker-foot">
-    <button class="btn btn-primary" id="picker-add-btn" onclick="addPickedExercises()" disabled>Select exercises</button>
+    <button class="btn btn-primary" id="picker-add-btn" onclick="pickerFootAction()" disabled>Select exercises</button>
   </div>
 </div></div>
 
@@ -750,7 +802,8 @@ function dbSet(key, val) {
   });
 }
 
-let settings = { anthropicKey: '', anthropicModel: 'claude-haiku-4-5-20251001', weightUnit: 'lbs', spreadsheetId: '' };
+// trainingMode and homeEquipment stay on this device; homeEquipment is null until the home setup is done.
+let settings = { anthropicKey: '', anthropicModel: 'claude-haiku-4-5-20251001', weightUnit: 'lbs', spreadsheetId: '', trainingMode: 'gym', homeEquipment: null };
 
 // Hardcode your Google OAuth Client ID here (not a secret -- it's a public identifier)
 const GOOGLE_CLIENT_ID = '470062200190-mfb1vdi9g9946lh5l73qtrn6fbv68n15.apps.googleusercontent.com';
@@ -1618,6 +1671,98 @@ function compareUnused(a, b) {
   return rank(a) - rank(b) || a.name.localeCompare(b.name);
 }
 
+// ============================================
+// HOME TRAINING
+// ============================================
+
+// Equipment the home setup offers, most common first; the first HOME_SUGGESTED are shown
+// up front. lib lists the exercise-library equipment values each item covers.
+const HOME_EQUIPMENT = [
+  { key: 'dumbbells', label: 'Dumbbells', lib: ['dumbbell'] },
+  { key: 'bands', label: 'Resistance bands', short: 'Bands', lib: ['bands'] },
+  { key: 'pullup_bar', label: 'Pull-up bar', lib: ['pull-up bar'] },
+  { key: 'bench', label: 'Bench', lib: ['bench', 'incline bench'] },
+  { key: 'kettlebell', label: 'Kettlebell', lib: ['kettlebell'] },
+  { key: 'barbell', label: 'Barbell and plates', short: 'Barbell', lib: ['barbell', 'ez curl bar'] },
+  { key: 'dip_bars', label: 'Dip bars', lib: [] },
+  { key: 'ab_wheel', label: 'Ab wheel', lib: [] },
+  { key: 'exercise_ball', label: 'Exercise ball', lib: ['exercise ball'] },
+  { key: 'medicine_ball', label: 'Medicine ball', lib: ['medicine ball'] },
+  { key: 'jump_rope', label: 'Jump rope', lib: [] },
+  { key: 'box', label: 'Plyo box', lib: [] },
+  { key: 'foam_roller', label: 'Foam roller', lib: ['foam roll'] },
+  { key: 'cable', label: 'Cable station', lib: ['cable'] },
+];
+const HOME_SUGGESTED = 6;
+
+// What the library's equipment field gets wrong or leaves vague ("none", "other").
+const HOME_NEEDS = {
+  'dips (chest focus)': ['dip_bars'], 'dips (triceps focus)': ['dip_bars'], 'knee/hip raise on parallel bars': ['dip_bars'],
+  'ab roller': ['ab_wheel'], 'rope jumping': ['jump_rope'], 'front box jump': ['box'], "farmer's walk": ['dumbbells'],
+  'band assisted pull-up': ['pullup_bar', 'bands'], 'flat bench lying leg raise': ['bench'],
+};
+
+// The home equipment an exercise needs (an empty list = bodyweight), or null when it needs a gym.
+function homeNeeds(name, equipment) {
+  const n = String(name).toLowerCase();
+  if (HOME_NEEDS[n]) return HOME_NEEDS[n];
+  const eq = equipment || [];
+  if (/pull[- ]?ups?\b|chin-?ups?|\bchins?\b|muscle up|hanging/.test(n) && eq.every(q => q === 'none' || q === 'other')) return ['pullup_bar'];
+  const needs = new Set();
+  for (const q of eq) {
+    if (q === 'none' || q === 'gym mat') continue;
+    const item = HOME_EQUIPMENT.find(i => i.lib.includes(q));
+    if (!item) return null; // machines and "other" gym kit
+    needs.add(item.key);
+  }
+  return [...needs];
+}
+
+// Custom exercises have no equipment data; one you've only ever logged without weight is bodyweight.
+function customHomeNeeds(name) {
+  let sets = 0;
+  for (const w of state.workoutHistory) {
+    const ex = w.exercises.find(e => e.exerciseName === name);
+    if (!ex) continue;
+    for (const st of ex.sets) { if (st.weight > 0) return null; sets++; }
+  }
+  return sets ? [] : null;
+}
+
+function isHomeMode() { return settings.trainingMode === 'home'; }
+
+function canDoAtHome(e, owned) {
+  return e.needs !== null && e.needs.every(k => owned.has(k));
+}
+
+function homeOwned() { return new Set(settings.homeEquipment || []); }
+
+function isBodyweightExercise(name) {
+  const ex = exerciseIndex[String(name).toLowerCase()];
+  const needs = ex ? homeNeeds(ex.name, ex.equipment) : customHomeNeeds(name);
+  return !!needs && needs.every(k => k === 'pullup_bar' || k === 'dip_bars');
+}
+
+// Easier → harder versions of bodyweight moves, for the "ready for harder" suggestion.
+const BODYWEIGHT_PROGRESSIONS = [
+  ['Incline Push-Up', 'Pushups', 'Push-Ups With Feet Elevated'],
+  ['Bodyweight Squat', 'Bodyweight Split Squat'],
+  ['Butt Lift (Bridge)', 'Single Leg Glute Bridge'],
+  ['Bodyweight Calf Raise', 'Single-Leg Calf Raise'],
+  ['Crunches', 'Sit-Up', 'Jackknife Sit-Up'],
+  ['Pike Push-Up', 'Handstand Push-Ups'],
+  ['Scapular Pull-Up', 'Band Assisted Pull-Up', 'Pullups'],
+];
+const BODYWEIGHT_HARDER_AT = 15; // reps in your best set before a harder version is suggested
+
+function harderVariant(name) {
+  for (const chain of BODYWEIGHT_PROGRESSIONS) {
+    const i = chain.indexOf(name);
+    if (i !== -1 && i < chain.length - 1) return chain[i + 1];
+  }
+  return null;
+}
+
 function getPickerCandidates() {
   const usage = getExerciseUsage();
   const none = { count: 0, recent: 0, last: 0 };
@@ -1627,6 +1772,7 @@ function getPickerCandidates() {
     known.add(e.name);
     return { id: e.id, name: e.name, muscleGroup: e.muscleGroup || 'Other', muscle: (e.primary_muscles || [])[0] || null,
       equipment: (e.equipment || []).filter(q => q !== 'none' && q !== 'other'), category: e.category || '',
+      needs: e.equipment ? homeNeeds(e.name, e.equipment) : customHomeNeeds(e.name),
       inPreset: inPresets.has(e.name), usage: usage[e.name] || none };
   });
   // Exercises logged in history but not in the picker's list (custom ones, or ones only in the
@@ -1636,7 +1782,8 @@ function getPickerCandidates() {
     const ex = exerciseIndex[name.toLowerCase()];
     list.push({ id: 'ex_name_' + name, name, muscleGroup: ex ? getExerciseMuscleGroup(ex) : 'Other',
       muscle: ex ? (ex.primary_muscles || [])[0] || null : null, equipment: ex ? (ex.equipment || []).filter(q => q !== 'none' && q !== 'other') : [],
-      category: ex ? ex.category || '' : '', inPreset: false, usage: usage[name] });
+      category: ex ? ex.category || '' : '', needs: ex ? homeNeeds(ex.name, ex.equipment) : customHomeNeeds(name),
+      inPreset: false, usage: usage[name] });
   });
   return list;
 }
@@ -1670,6 +1817,9 @@ function openExercisePicker() {
   picker.muscle = null;
   picker.showAll = false;
   picker.group = state.workoutHistory.length ? 'frequent' : 'all';
+  picker.setup = isHomeMode() && !settings.homeEquipment;
+  picker.setupDraft = [];
+  picker.setupMore = false;
   if (pendingPresetReplace) {
     const old = state.exercises.find(e => e.name === pendingPresetReplace.oldName);
     if (old && PICKER_GROUPS.includes(old.muscleGroup)) {
@@ -1678,7 +1828,6 @@ function openExercisePicker() {
     }
   }
   document.getElementById('picker-title').textContent = pendingPresetReplace ? 'Replace Exercise' : 'Add Exercises';
-  document.getElementById('picker-foot').style.display = pendingPresetReplace ? 'none' : '';
   renderExercisePicker();
   document.getElementById('picker-body').scrollTop = 0;
   document.getElementById('exercise-picker').classList.add('open');
@@ -1711,7 +1860,16 @@ function pickerMatches(e, terms) {
 }
 
 function renderExercisePicker() {
-  const all = getPickerCandidates();
+  renderPickerMode();
+  ['exercise-search', 'picker-groups', 'picker-muscles', 'picker-custom'].forEach(id => { document.getElementById(id).style.display = picker.setup ? 'none' : ''; });
+  document.getElementById('picker-foot').style.display = picker.setup || !pendingPresetReplace ? '' : 'none';
+  if (picker.setup) { renderHomeSetup(); return; }
+  // At home everything below works on just the exercises your home equipment allows; Due
+  // still looks at all your training to decide which muscles are due.
+  const everything = getPickerCandidates();
+  const home = isHomeMode();
+  const owned = homeOwned();
+  const all = home ? everything.filter(e => canDoAtHome(e, owned)) : everything;
   const q = document.getElementById('exercise-search').value.trim().toLowerCase();
   const terms = q ? q.split(/\s+/) : [];
   const inWorkout = new Set((state.currentWorkout ? state.currentWorkout.exercises : []).map(e => e.exerciseName));
@@ -1754,11 +1912,12 @@ function renderExercisePicker() {
     }
     scope = matches;
   } else if (picker.group === 'frequent' && !used.length) {
-    note = 'Exercises you log will show up here, most used first. Pick a muscle group above to browse.';
+    note = home ? 'Home exercises you log will show up here. Pick a muscle group above to see what you can do with your equipment.'
+      : 'Exercises you log will show up here, most used first. Pick a muscle group above to browse.';
   }
 
   // On Frequent, lead with your exercises for the muscles you've gone longest without training.
-  const due = picker.group === 'frequent' && !terms.length ? getDueMuscles(all, inWorkout) : [];
+  const due = picker.group === 'frequent' && !terms.length ? getDueMuscles(everything, inWorkout, home ? all : null) : [];
   const dueRows = due.flatMap(m => m.exercises);
   const dueNames = new Set(dueRows.map(e => e.name));
   const mine = scope.filter(e => e.usage.count > 0 && !dueNames.has(e.name)).sort(compareByUsage);
@@ -1770,18 +1929,19 @@ function renderExercisePicker() {
   const row = (e, i) => {
     const added = inWorkout.has(e.name);
     const meta = [e.muscle ? titleCase(e.muscle) : e.muscleGroup];
-    if (e.equipment.length) meta.push(e.equipment[0]);
+    if (e.equipment.length) meta.push(titleCase(e.equipment[0]));
     const usedHtml = e.usage.count ? ' · <span class="used">'+e.usage.count+'× · '+formatAgo(e.usage.last)+'</span>' : '';
     const cls = 'exercise-option' + (added ? ' added' : selected.has(e.name) ? ' selected' : '');
-    return '<div class="'+cls+'" id="pick-row-'+i+'" onclick="pickExercise('+i+')">'+pickerIcon(e.muscleGroup, e.name)+
+    return '<div class="'+cls+'" id="pick-row-'+i+'" onclick="pickExercise('+i+')"><span class="ex-icon">'+pickerIcon(e.muscleGroup, e.name)+'</span>'+
       '<div class="ex-main"><span class="ex-name">'+escapeHtml(e.name)+'</span><span class="ex-meta">'+escapeHtml(meta.join(' · '))+usedHtml+'</span></div>'+
       '<span class="ex-check">✓</span></div>';
   };
   let h = note ? '<p class="picker-note">'+note+'</p>' : '';
   let at = 0;
   due.forEach(m => {
-    h += '<div class="exercise-group-label due-label"><span>Due · '+titleCase(m.muscle)+' <span class="due-days">'+m.days+' days</span></span>'+
-      '<button class="btn-ghost" onclick="showPickerMuscle(\''+m.group+'\',\''+m.muscle+'\')">More</button></div>';
+    h += '<div class="exercise-group-label due-label"><span class="due-title">Due · '+titleCase(m.muscle)+'</span>'+
+      '<button class="btn-link" onclick="showPickerMuscle(\''+m.group+'\',\''+m.muscle+'\')">See all</button></div>'+
+      '<div class="due-sub">Last trained '+m.days+' days ago'+(m.replaces ? ' · instead of '+escapeHtml(m.replaces) : '')+'</div>';
     h += m.exercises.map(e => row(e, at++)).join('');
   });
   if (due.length && mine.length) h += '<div class="exercise-group-label">Frequent</div>';
@@ -1801,7 +1961,9 @@ const DUE_PER_MUSCLE = 2;     // how many of your exercises to suggest for each
 
 // Muscles you train (primary muscle of 2+ logged workouts) ranked by days since last trained,
 // each with your most-used exercises for it. Muscles already in this workout are skipped.
-function getDueMuscles(candidates, inWorkout) {
+// With a pool (the exercises you can do at home), each muscle gets exercises from the pool
+// instead, yours first, plus the usual exercise they stand in for.
+function getDueMuscles(candidates, inWorkout, pool) {
   const byMuscle = {};
   candidates.forEach(e => {
     if (!e.muscle || !e.usage.count) return;
@@ -1812,10 +1974,21 @@ function getDueMuscles(candidates, inWorkout) {
   });
   const training = new Set(candidates.filter(e => inWorkout.has(e.name) && e.muscle).map(e => e.muscle));
   const now = Date.now();
-  return Object.values(byMuscle)
+  const ranked = Object.values(byMuscle)
     .map(m => Object.assign(m, { days: Math.floor((now - m.last) / 86400000) }))
     .filter(m => m.sessions >= 2 && m.days >= DUE_MIN_DAYS && !training.has(m.muscle))
-    .sort((a, b) => b.days - a.days || b.sessions - a.sessions || a.muscle.localeCompare(b.muscle))
+    .sort((a, b) => b.days - a.days || b.sessions - a.sessions || a.muscle.localeCompare(b.muscle));
+  if (pool) {
+    const inPool = new Set(pool.map(e => e.name));
+    return ranked.map(m => {
+      const options = pool.filter(e => e.muscle === m.muscle && !inWorkout.has(e.name));
+      const exercises = options.filter(e => e.usage.count).sort(compareByUsage)
+        .concat(options.filter(e => !e.usage.count).sort(compareUnused)).slice(0, DUE_PER_MUSCLE);
+      const usual = m.exercises.filter(e => !inPool.has(e.name)).sort(compareByUsage)[0];
+      return Object.assign(m, { exercises, replaces: usual ? usual.name : null });
+    }).filter(m => m.exercises.length).slice(0, DUE_MUSCLES);
+  }
+  return ranked
     .slice(0, DUE_MUSCLES)
     .map(m => Object.assign(m, { exercises: m.exercises.filter(e => !inWorkout.has(e.name)).sort(compareByUsage).slice(0, DUE_PER_MUSCLE) }))
     .filter(m => m.exercises.length);
@@ -1829,6 +2002,81 @@ function showPickerMuscle(group, muscle) {
 function showAllPickerRows() {
   picker.showAll = true;
   renderExercisePicker();
+}
+
+const ICON_GYM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>';
+const ICON_HOME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>';
+
+function renderPickerMode() {
+  const home = isHomeMode();
+  document.getElementById('picker-mode').innerHTML =
+    '<button class="'+(home ? '' : 'active')+'" onclick="setTrainingMode(\'gym\')">'+ICON_GYM+'Gym</button>'+
+    '<button class="'+(home ? 'active' : '')+'" onclick="setTrainingMode(\'home\')">'+ICON_HOME+'Home</button>';
+  let kit = '';
+  if (home && !picker.setup && settings.homeEquipment) {
+    const names = HOME_EQUIPMENT.filter(i => settings.homeEquipment.includes(i.key)).map(i => i.short || i.label);
+    kit = '<button class="kit-row" onclick="openHomeSetup()">'+ICON_HOME+'<span class="kit-list">'+escapeHtml(names.length ? names.join(' · ') : 'Bodyweight only')+'</span><span class="kit-edit">Edit</span></button>';
+  }
+  document.getElementById('picker-kit').innerHTML = kit;
+}
+
+function setTrainingMode(mode) {
+  if (settings.trainingMode !== mode) saveSetting('trainingMode', mode);
+  picker.setup = mode === 'home' && !settings.homeEquipment;
+  picker.setupDraft = [];
+  picker.setupMore = false;
+  picker.muscle = null;
+  picker.showAll = false;
+  renderExercisePicker();
+  document.getElementById('picker-body').scrollTop = 0;
+}
+
+function openHomeSetup() {
+  picker.setup = true;
+  picker.setupDraft = [...(settings.homeEquipment || [])];
+  picker.setupMore = HOME_EQUIPMENT.slice(HOME_SUGGESTED).some(i => picker.setupDraft.includes(i.key));
+  renderExercisePicker();
+  document.getElementById('picker-body').scrollTop = 0;
+}
+
+function toggleHomeItem(key) {
+  const at = picker.setupDraft.indexOf(key);
+  if (at === -1) picker.setupDraft.push(key); else picker.setupDraft.splice(at, 1);
+  renderHomeSetup();
+}
+
+function showMoreHomeItems() {
+  picker.setupMore = true;
+  renderHomeSetup();
+}
+
+// Home setup: the common items first, nothing pre-selected; the button shows how many
+// exercises the chosen equipment opens up.
+function renderHomeSetup() {
+  const draft = new Set(picker.setupDraft);
+  const items = picker.setupMore ? HOME_EQUIPMENT : HOME_EQUIPMENT.slice(0, HOME_SUGGESTED);
+  let h = '<div class="home-setup"><p class="eyebrow">Home setup</p><h3>What do you have at home?</h3>'+
+    '<p class="setup-sub">Tap everything you have. Bodyweight exercises are always included, and you can change this later.</p><div class="kit-grid">';
+  h += items.map(i => '<button class="kit-card'+(draft.has(i.key) ? ' selected' : '')+'" onclick="toggleHomeItem(\''+i.key+'\')"><span>'+i.label+'</span><span class="ex-check">✓</span></button>').join('');
+  h += '</div>';
+  if (!picker.setupMore) h += '<button class="add-set-btn kit-more" onclick="showMoreHomeItems()">More equipment</button>';
+  document.getElementById('exercise-list').innerHTML = h + '</div>';
+  const n = getPickerCandidates().filter(e => canDoAtHome(e, draft)).length;
+  const btn = document.getElementById('picker-add-btn');
+  btn.disabled = false;
+  btn.textContent = draft.size ? 'Show ' + n + ' exercises' : 'Bodyweight only · ' + n + ' exercises';
+}
+
+function finishHomeSetup() {
+  const owned = HOME_EQUIPMENT.map(i => i.key).filter(k => picker.setupDraft.includes(k));
+  picker.setup = false;
+  saveSetting('homeEquipment', owned);
+  renderExercisePicker();
+  document.getElementById('picker-body').scrollTop = 0;
+}
+
+function pickerFootAction() {
+  if (picker.setup) finishHomeSetup(); else addPickedExercises();
 }
 
 function updatePickerFoot() {
@@ -1854,6 +2102,8 @@ function pickExercise(i) {
 function addPickedExercises() {
   if (!state.currentWorkout || !picker.selected.length) return;
   const n = picker.selected.length;
+  // A workout you put together at home is saved as "Home" (in the sheet's existing preset column).
+  if (isHomeMode() && !state.currentWorkout.presetName) state.currentWorkout.presetName = 'Home';
   picker.selected.forEach(s => addExerciseToWorkout(s.id, s.name));
   picker.selected = [];
   closeOverlay('exercise-picker');
@@ -1965,11 +2215,19 @@ function renderWorkout() {
       h+='<button class="tip-toggle" onclick="var el=document.getElementById(\'tip-'+xi+'\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Form tip</button>';
     }
     const prevSets = getPreviousSession(ex.exerciseName);
+    const bw = isBodyweightExercise(ex.exerciseName);
+    if (bw && prevSets) {
+      const best = Math.max(0, ...prevSets.map(s => s.reps || 0));
+      const harder = harderVariant(ex.exerciseName);
+      const showHarder = harder && best >= BODYWEIGHT_HARDER_AT && !state.currentWorkout.exercises.some(e => e.exerciseName === harder);
+      if (best) h+='<div class="bw-hint">Best set last time <b>'+best+' reps</b>. Aim for <b>'+(best+1)+'</b>.'+
+        (showHarder ? '<div class="bw-hint-next"><span>Ready for <b>'+escapeHtml(harder)+'</b></span><button class="pill-btn" onclick="swapToHarder('+xi+')">Swap</button></div>' : '')+'</div>';
+    }
     h+='<div class="set-row header"><span>Set</span><span style="text-align:center">Wt</span><span style="text-align:center">Reps</span><span style="text-align:center">Effort</span><span></span></div>';
     ex.sets.forEach((s,si)=>{
       const ps = prevSets && prevSets[si];
-      h+='<div class="set-row"><span class="set-num">'+(si+1)+'</span>';
-      h+='<div class="set-input-cell"><input type="number" value="'+(s.weight||'')+'" placeholder="0" onchange="updateSet('+xi+','+si+',\'weight\',this.value)">'+(ps && ps.weight ? '<span class="prev-val">'+ps.weight+'</span>' : '')+'</div>';
+      h+='<div class="set-row'+(ps && (ps.weight || ps.reps) ? ' has-prev' : '')+'"><span class="set-num">'+(si+1)+'</span>';
+      h+='<div class="set-input-cell"><input type="number" value="'+(s.weight||'')+'" placeholder="'+(bw ? 'BW' : '0')+'" onchange="updateSet('+xi+','+si+',\'weight\',this.value)">'+(ps && ps.weight ? '<span class="prev-val">'+ps.weight+'</span>' : '')+'</div>';
       h+='<div class="set-input-cell"><input type="number" inputmode="numeric" value="'+(s.reps||'')+'" placeholder="0" onchange="updateSet('+xi+','+si+',\'reps\',this.value)">'+(ps && ps.reps ? '<span class="prev-val">'+ps.reps+'</span>' : '')+'</div>';
       h+='<div class="effort-toggle">';
       h+='<button class="effort-btn '+(s.effort==='light'?'active light':'')+'" onclick="updateSet('+xi+','+si+',\'effort\',\'light\');renderWorkout()">L</button>';
@@ -1984,6 +2242,23 @@ function renderWorkout() {
   });
   if(!state.currentWorkout.exercises.length) h='<div class="empty-state mt-20"><p class="dim">No exercises yet. Add one below.</p></div>';
   c.innerHTML=h;
+}
+
+// Swap a bodyweight exercise for its harder version, keeping the number of sets.
+function swapToHarder(xi) {
+  const ex = state.currentWorkout.exercises[xi];
+  const name = ex && harderVariant(ex.exerciseName);
+  if (!name) return;
+  const found = findExercise(name);
+  const prevSets = getPreviousSession(name);
+  ex.exerciseId = found ? found.id : 'ex_'+Date.now().toString(36);
+  ex.exerciseName = name;
+  ex.sets = ex.sets.map((s, i) => {
+    const p = prevSets && prevSets[i];
+    return { id: s.id, weight: p ? p.weight : 0, reps: p ? p.reps : 0, effort: '' };
+  });
+  renderWorkout();
+  toast('Swapped to ' + name);
 }
 
 const CORE_EXERCISES = ['Plank', 'Ab Wheel Rollout', 'Hanging Leg Raise', 'Cable Crunch', 'Russian Twist'];

@@ -88,7 +88,7 @@ test('picker opens on Frequent, ranked by usage count then recency', () => {
   // Quads and chest were both last trained 10 days ago, so they lead as Due (quads has more
   // sessions); the rest follow by usage. Lying Leg Curls was logged once, too little to nag about.
   assert.deepEqual(rowNames(app), ['Barbell Squat', 'Leg Press', 'Barbell Bench Press', 'My Odd Machine', 'Lying Leg Curls']);
-  assert.match(app.el('exercise-list').innerHTML, /Due · Quads <span class="due-days">10 days/);
+  assert.match(app.el('exercise-list').innerHTML, /Due · Quads<\/span>.*Last trained 10 days ago/);
   assert.match(app.el('picker-groups').innerHTML, /★ Frequent<span class="chip-count">5/);
   assert.match(app.el('exercise-list').innerHTML, /3× · /);
 });
@@ -231,4 +231,73 @@ test('logged exercises outside the picker list keep their muscle from the exerci
     startWorkout(); openExercisePicker();`);
   assert.equal(app.run("picker.rows[0].name + '|' + picker.rows[0].muscleGroup + '|' + picker.rows[0].muscle"), 'Lying Leg Curls|Legs|hamstrings');
   assert.match(app.el('exercise-list').innerHTML, /Due · Hamstrings/);
+});
+
+test('the first time Home is picked, a setup asks for equipment with nothing pre-selected', () => {
+  const app = setup();
+  app.run('openExercisePicker()');
+  assert.match(app.el('picker-mode').innerHTML, /class="active"[^>]*><svg.*?<\/svg>Gym/);
+  app.run("setTrainingMode('home')");
+  assert.equal(app.run('picker.setup'), true);
+  assert.equal(app.el('exercise-search').style.display, 'none');
+  const html = app.el('exercise-list').innerHTML;
+  assert.match(html, /What do you have at home\?/);
+  assert.doesNotMatch(html, /kit-card selected/);
+  assert.match(app.el('picker-add-btn').textContent, /^Bodyweight only · \d+ exercises$/);
+  const bodyweight = Number(app.el('picker-add-btn').textContent.match(/(\d+) exercises/)[1]);
+  app.run("toggleHomeItem('dumbbells')");
+  const withDumbbells = Number(app.el('picker-add-btn').textContent.match(/^Show (\d+) exercises$/)[1]);
+  assert.ok(withDumbbells > bodyweight);
+  app.run('pickerFootAction()');
+  assert.equal(app.run('picker.setup'), false);
+  assert.deepEqual(runJson(app, 'settings.homeEquipment'), ['dumbbells']);
+  assert.match(app.el('picker-kit').innerHTML, /Dumbbells.*Edit/);
+  // Opening the picker again remembers Home and skips the setup.
+  app.run("closeOverlay('exercise-picker'); openExercisePicker()");
+  assert.equal(app.run('picker.setup'), false);
+  assert.equal(app.run('settings.trainingMode'), 'home');
+});
+
+test('at home the picker only offers what your equipment allows', () => {
+  const app = setup();
+  app.run("settings.trainingMode = 'home'; settings.homeEquipment = []; openExercisePicker(); setPickerGroup('all'); showAllPickerRows()");
+  const names = rowNames(app);
+  assert.ok(names.includes('Pushups'));
+  assert.ok(names.includes('Pike Push-Up'));
+  assert.ok(!names.includes('Barbell Squat'));
+  assert.ok(!names.includes('Pullups'), 'pull-ups need a pull-up bar');
+  assert.ok(!names.includes('Dumbbell Bench Press'));
+  app.run("settings.homeEquipment = ['pullup_bar', 'dumbbells']; renderExercisePicker()");
+  assert.ok(rowNames(app).includes('Pullups'));
+  assert.ok(!rowNames(app).includes('Dumbbell Bench Press'), 'also needs a bench');
+});
+
+test('at home Due keeps your due muscles and suggests home exercises for them', () => {
+  const app = setup();
+  app.run("settings.trainingMode = 'home'; settings.homeEquipment = []; openExercisePicker()");
+  const html = app.el('exercise-list').innerHTML;
+  assert.match(html, /Due · Quads<\/span>.*Last trained 10 days ago · instead of Barbell Squat/);
+  const due = runJson(app, "getDueMuscles(getPickerCandidates(), new Set(), getPickerCandidates().filter(e => canDoAtHome(e, homeOwned())))");
+  const quads = due.find(m => m.muscle === 'quads');
+  assert.equal(quads.exercises.length, 2);
+  assert.ok(quads.exercises.every(e => e.needs && e.needs.length === 0));
+});
+
+test('a workout built at home is saved as Home', () => {
+  const app = setup();
+  app.run("settings.trainingMode = 'home'; settings.homeEquipment = []; openExercisePicker(); pickExercise(0); addPickedExercises()");
+  assert.equal(app.run('state.currentWorkout.presetName'), 'Home');
+});
+
+test('bodyweight exercises show a rep target and suggest the harder version', () => {
+  const app = loadApp();
+  const date = new Date(Date.now() - 2 * 86400000).toISOString();
+  app.run(`state.workoutHistory = [{ id: 'w', date: '${date}', exercises: [{ exerciseName: 'Pushups', sets: [{ weight: 0, reps: 18, effort: 'good' }] }] }];
+    startWorkout(); addExerciseToWorkout('x', 'Pushups'); renderWorkout();`);
+  const html = app.el('workout-exercises').innerHTML;
+  assert.match(html, /Best set last time <b>18 reps<\/b>. Aim for <b>19<\/b>./);
+  assert.match(html, /placeholder="BW"/);
+  assert.match(html, /Ready for <b>Push-Ups With Feet Elevated<\/b>/);
+  app.run('swapToHarder(0)');
+  assert.equal(app.run('state.currentWorkout.exercises[0].exerciseName'), 'Push-Ups With Feet Elevated');
 });

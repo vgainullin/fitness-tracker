@@ -131,6 +131,24 @@
     {
       "category": "strength",
       "equipment": [
+        "none"
+      ],
+      "instructions": [
+        "Lie on the floor with the knees bent and the feet on the floor around 18-24 inches apart. Your arms should be extended by your side. This will be your starting position.",
+        "Crunch over your torso forward and up about 3-4 inches to the right side and touch your right heel as you hold the contraction for a second. Exhale while performing this movement.",
+        "Now go back slowly to the starting position as you inhale.",
+        "Now crunch over your torso forward and up around 3-4 inches to the left side and touch your left heel as you hold the contraction for a second. Exhale while performing this movement and then go back to the starting position as you inhale. Now that both heels have been touched, that is considered 1 repetition.",
+        "Continue alternating sides in this manner until all prescribed repetitions are done."
+      ],
+      "name": "Alternate Heel Touchers",
+      "primary_muscles": [
+        "abs"
+      ],
+      "secondary_muscles": []
+    },
+    {
+      "category": "strength",
+      "equipment": [
         "kettlebell"
       ],
       "instructions": [
@@ -192,6 +210,28 @@
     {
       "category": "strength",
       "equipment": [
+        "bands"
+      ],
+      "instructions": [
+        "Run a band around a stationary post like that of a squat rack.",
+        "Grab the band by the handles and stand back so that the tension in the band rises.",
+        "Extend and lift the arms straight in front of you. Tip: Your arms should be straight and parallel to the floor while perpendicular to your torso. Your feet should be firmly planted on the floor spread at shoulder width. This will be your starting position.",
+        "As you exhale, move your arms to the sides and back. Keep your arms extended and parallel to the floor. Continue the movement until the arms are extended to your sides.",
+        "After a pause, go back to the original position as you inhale.",
+        "Repeat for the recommended amount of repetitions."
+      ],
+      "name": "Back Flyes - With Bands",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "middle back",
+        "triceps"
+      ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
         "exercise ball"
       ],
       "instructions": [
@@ -232,6 +272,44 @@
       ]
     },
     {
+      "name": "Band Bicep Curl",
+      "category": "strength",
+      "equipment": [
+        "bands"
+      ],
+      "primary_muscles": [
+        "biceps"
+      ],
+      "secondary_muscles": [
+        "forearms"
+      ],
+      "instructions": [
+        "Stand on the middle of a band and hold an end in each hand, palms facing forward.",
+        "Keeping your elbows at your sides, curl your hands up toward your shoulders.",
+        "Lower slowly against the band's pull."
+      ],
+      "added": true
+    },
+    {
+      "category": "strength",
+      "equipment": [
+        "bands"
+      ],
+      "instructions": [
+        "Using a 41 inch band, stand on one end, spreading your feet a small amount. Bend at the hips to loop the end of the band behind your neck. This will be your starting position.",
+        "Keeping your legs straight, extend through the hips to come to a near vertical position.",
+        "Ensure that you do not round your back as you go down back to the starting position."
+      ],
+      "name": "Band Good Morning",
+      "primary_muscles": [
+        "hamstrings"
+      ],
+      "secondary_muscles": [
+        "glutes",
+        "lower back"
+      ]
+    },
+    {
       "category": "strength",
       "equipment": [
         "bands"
@@ -250,6 +328,49 @@
         "middle back",
         "traps"
       ]
+    },
+    {
+      "name": "Band Row",
+      "category": "strength",
+      "equipment": [
+        "bands"
+      ],
+      "primary_muscles": [
+        "middle back"
+      ],
+      "secondary_muscles": [
+        "lats",
+        "biceps"
+      ],
+      "instructions": [
+        "Anchor a band at chest height, or sit with your legs straight and loop it around your feet.",
+        "Hold an end in each hand with arms straight, then pull your elbows back past your ribs, squeezing your shoulder blades.",
+        "Return slowly until your arms are straight."
+      ],
+      "added": true
+    },
+    {
+      "category": "strength",
+      "description": "Skullcrusher performed with bands",
+      "equipment": [
+        "bands"
+      ],
+      "instructions": [
+        "Secure a band to the base of a rack or the bench. Lay on the bench so that the band is lined up with your head.",
+        "Take hold of the band, raising your elbows so that the upper arm is perpendicular to the floor. With the elbow flexed, the band should be above your head. This will be your starting position.",
+        "Extend through the elbow to straighten your arm, keeping your upper arm in place. Pause at the top of the motion, and return to the starting position."
+      ],
+      "name": "Band Skullcrusher",
+      "primary_muscles": [
+        "triceps"
+      ],
+      "secondary_muscles": [
+        "forearms"
+      ],
+      "variation_on": [
+        "skullcrusher"
+      ],
+      "video": "https://www.youtube.com/watch?v=xtb-gltsmMU"
     },
     {
       "category": "strength",
@@ -705,6 +826,43 @@
       ]
     },
     {
+      "name": "Bodyweight Calf Raise",
+      "category": "strength",
+      "equipment": [
+        "none"
+      ],
+      "primary_muscles": [
+        "calves"
+      ],
+      "secondary_muscles": [],
+      "instructions": [
+        "Stand with the balls of your feet on the edge of a step, heels hanging off, holding a wall or rail for balance.",
+        "Rise up onto your toes as high as you can and pause.",
+        "Lower your heels slowly below the step, then repeat."
+      ],
+      "added": true
+    },
+    {
+      "name": "Bodyweight Split Squat",
+      "category": "strength",
+      "equipment": [
+        "none"
+      ],
+      "primary_muscles": [
+        "quads"
+      ],
+      "secondary_muscles": [
+        "glutes",
+        "hamstrings"
+      ],
+      "instructions": [
+        "Stand in a long stride with your back heel raised.",
+        "Lower straight down until your back knee nearly touches the floor.",
+        "Drive through your front heel to stand back up. Finish all reps, then switch legs."
+      ],
+      "added": true
+    },
+    {
       "category": "strength",
       "equipment": [
         "none"
@@ -1042,6 +1200,29 @@
     {
       "category": "strength",
       "equipment": [
+        "bands"
+      ],
+      "instructions": [
+        "Grab an exercise band and stand on it with your toes making sure that the length of the band between the foot and the arms is the same for both sides.",
+        "While holding the handles of the band, raise the arms to the side of your head as if you were getting ready to perform a shoulder press. The palms should be facing forward with the elbows bent and to the sides. This movement will create tension on the band. This will be your starting position.",
+        "Keeping the hands by your shoulder, stand up on your toes as you exhale and contract the calves hard at the top of the movement.",
+        "After a one second contraction, slowly go back down to the starting position.",
+        "Repeat for the recommended amount of repetitions."
+      ],
+      "name": "Calf Raises - With Bands",
+      "primary_muscles": [
+        "calves"
+      ],
+      "secondary_muscles": [
+        "soleus"
+      ],
+      "variation_on": [
+        "calf raise"
+      ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
         "none"
       ],
       "instructions": [
@@ -1189,6 +1370,46 @@
     {
       "category": "strength",
       "equipment": [
+        "bands"
+      ],
+      "instructions": [
+        "Secure an exercise band around a stationary post.",
+        "While facing away from the post, grab the handles on both ends of the band and step forward enough to create tension on the band.",
+        "Raise your arms to the sides, parallel to the floor, perpendicular to your torso (your torso and the arms should resemble the letter T) and with the palms facing forward. Have them extended with a slight bend at the elbows. This will be your starting position.",
+        "While keeping your arms straight, bring them across your chest in a semicircular motion to the front as you exhale and flex your pecs. Hold the contraction for a second.",
+        "Slowly return to the starting position as you inhale.",
+        "Perform for the recommended amount of repetitions."
+      ],
+      "name": "Cross Over - With Bands",
+      "primary_muscles": [
+        "chest"
+      ],
+      "secondary_muscles": [
+        "biceps",
+        "shoulders"
+      ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
+        "none"
+      ],
+      "instructions": [
+        "Lie flat on your back and bend your knees about 60 degrees.",
+        "Keep your feet flat on the floor and place your hands loosely behind your head. This will be your starting position.",
+        "Now curl up and bring your right elbow and shoulder across your body while bring your left knee in toward your left shoulder at the same time. Reach with your elbow and try to touch your knee. Exhale as you perform this movement. Tip: Try to bring your shoulder up towards your knee rather than just your elbow and remember that the key is to contract the abs as you perform the movement; not just to move the elbow.",
+        "Now go back down to the starting position as you inhale and repeat with the left elbow and the right knee.",
+        "Continue alternating in this manner until all prescribed repetitions are done."
+      ],
+      "name": "Cross-Body Crunch",
+      "primary_muscles": [
+        "abs"
+      ],
+      "secondary_muscles": []
+    },
+    {
+      "category": "strength",
+      "equipment": [
         "none"
       ],
       "instructions": [
@@ -1248,6 +1469,26 @@
       "secondary_muscles": [],
       "variation_on": [
         "crunch"
+      ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
+        "none"
+      ],
+      "instructions": [
+        "Lie on the floor face down and place your hands about 36 inches apart while holding your torso up at arms length. Move your feet up to a box or bench. This will be your starting position.",
+        "Next, lower yourself downward until your chest almost touches the floor as you inhale.",
+        "Now breathe out and press your upper body back up to the starting position while squeezing your chest.",
+        "After a brief pause at the top contracted position, you can begin to lower yourself downward again for as many repetitions as needed."
+      ],
+      "name": "Decline Push-Up",
+      "primary_muscles": [
+        "chest"
+      ],
+      "secondary_muscles": [
+        "shoulders",
+        "triceps"
       ]
     },
     {
@@ -1842,6 +2083,26 @@
     {
       "category": "strength",
       "equipment": [
+        "none"
+      ],
+      "instructions": [
+        "You can use a partner for this exercise or brace your feet under something stable.",
+        "Begin on your knees with your upper legs and torso upright. If using a partner, they will firmly hold your feet to keep you in position. This will be your starting position.",
+        "Lower yourself by extending at the knee, taking care to NOT flex the hips as you go forward.",
+        "Place your hands in front of you as you reach the floor. This movement is very difficult and you may be unable to do it unaided. Use your arms to lightly push off the floor to aid your return to the starting position."
+      ],
+      "name": "Floor Glute-Ham Raise",
+      "primary_muscles": [
+        "hamstrings"
+      ],
+      "secondary_muscles": [
+        "calves",
+        "glutes"
+      ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
         "barbell"
       ],
       "instructions": [
@@ -2170,6 +2431,26 @@
       "secondary_muscles": []
     },
     {
+      "category": "strength",
+      "equipment": [
+        "bands"
+      ],
+      "instructions": [
+        "After choosing a suitable band, lay down in the middle of the rack, after securing the band on either side of you. If your rack doesn't have pegs, the band can be secured using heavy dumbbells or similar objects, just ensure they won't move.",
+        "Adjust your position so that the band is directly over your hips. Bend your knees and place your feet flat on the floor. Your hands can be on the floor or holding the band in position.",
+        "Keeping your shoulders on the ground, drive through your heels to raise your hips, pushing into the band as high as you can.",
+        "Pause at the top of the motion, and return to the starting position."
+      ],
+      "name": "Hip Lift with Band",
+      "primary_muscles": [
+        "glutes"
+      ],
+      "secondary_muscles": [
+        "calves",
+        "hamstrings"
+      ]
+    },
+    {
       "name": "Hip Thrust Machine",
       "category": "strength",
       "equipment": [
@@ -2201,6 +2482,27 @@
         "Repeat for the recommended amount of repetitions."
       ],
       "name": "Hyperextensions (Back Extensions)",
+      "primary_muscles": [
+        "lower back"
+      ],
+      "secondary_muscles": [
+        "glutes",
+        "hamstrings"
+      ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
+        "none"
+      ],
+      "instructions": [
+        "With someone holding down your legs, slide yourself down to the edge a flat bench until your hips hang off the end of the bench. Tip: Your entire upper body should be hanging down towards the floor. Also, you will be in the same position as if you were on a hyperextension bench but the range of motion will be shorter due to the height of the flat bench vs. that of the hyperextension bench.",
+        "With your body straight, cross your arms in front of you (my preference) or behind your head. This will be your starting position. Tip: You can also hold a weight plate for extra resistance in front of you under your crossed arms.",
+        "Start bending forward slowly at the waist as far as you can while keeping your back flat. Inhale as you perform this movement. Keep moving forward until you almost touch the floor or you feel a nice stretch on the hamstrings (whichever comes first). Tip: Never round the back as you perform this exercise.",
+        "Slowly raise your torso back to the initial position as you exhale. Tip: Avoid the temptation to arch your back past a straight line. Also, do not swing the torso at any time in order to protect the back from injury.",
+        "Repeat for the recommended amount of repetitions."
+      ],
+      "name": "Hyperextensions With No Hyperextension Bench",
       "primary_muscles": [
         "lower back"
       ],
@@ -2308,6 +2610,27 @@
       "secondary_muscles": [
         "shoulders",
         "triceps"
+      ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
+        "none"
+      ],
+      "instructions": [
+        "Stand facing a Smith machine bar or sturdy elevated platform at an appropriate height.",
+        "Place your hands next to one another on the bar.",
+        "Position your feet back from the bar with arms and body straight. This will be your starting position.",
+        "Keeping your body straight, lower your chest to the bar by bending the arms.",
+        "Return to the starting position by extending the elbows, pressing yourself back up."
+      ],
+      "name": "Incline Push-Up Close-Grip",
+      "primary_muscles": [
+        "triceps"
+      ],
+      "secondary_muscles": [
+        "chest",
+        "shoulders"
       ]
     },
     {
@@ -2514,6 +2837,23 @@
         "quads",
         "triceps"
       ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
+        "bands"
+      ],
+      "instructions": [
+        "To begin, stand on an exercise band so that tension begins at arm's length. Grasp the handles using a pronated (palms facing your thighs) grip that is slightly less than shoulder width. The handles should be resting on the sides of your thighs. Your arms should be extended with a slight bend at the elbows and your back should be straight. This will be your starting position.",
+        "Use your side shoulders to lift the handles to the sides as you exhale. Continue to lift the handles until they are slightly above parallel. Tip: As you lift the handles, slightly tilt the hand as if you were pouring water and keep your arms extended. Also, keep your torso stationary and pause for a second at the top of the movement.",
+        "Lower the handles back down slowly to the starting position. Inhale as you perform this portion of the movement.",
+        "Repeat for the recommended amount of repetitions."
+      ],
+      "name": "Lateral Raise - With Bands",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": []
     },
     {
       "category": "strength",
@@ -3179,6 +3519,25 @@
       "secondary_muscles": []
     },
     {
+      "name": "Pike Push-Up",
+      "category": "strength",
+      "equipment": [
+        "none"
+      ],
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "triceps"
+      ],
+      "instructions": [
+        "Start in a push-up position, then walk your feet in and lift your hips so your body makes an upside-down V.",
+        "Bend your elbows to lower the top of your head toward the floor between your hands.",
+        "Press back up until your arms are straight. Put your feet on a step or chair to make it harder."
+      ],
+      "added": true
+    },
+    {
       "category": "strength",
       "equipment": [
         "none"
@@ -3327,6 +3686,27 @@
       ],
       "secondary_muscles": [
         "quads",
+        "triceps"
+      ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
+        "none"
+      ],
+      "instructions": [
+        "With your hands wide apart, support your body on your toes and hands in a plank position. Your elbows should be extended and your body straight. Do not allow your hips to sag. This will be your starting position.",
+        "To begin, allow the elbows to flex, lowering your chest to the floor as you inhale.",
+        "Using your pectoral muscles, press your upper body back up to the starting position by extending the elbows. Exhale as you perform this step.",
+        "After pausing at the contracted position, repeat the movement for the prescribed amount of repetitions."
+      ],
+      "name": "Push-Up Wide",
+      "primary_muscles": [
+        "chest"
+      ],
+      "secondary_muscles": [
+        "abs",
+        "shoulders",
         "triceps"
       ]
     },
@@ -3897,6 +4277,24 @@
     {
       "category": "strength",
       "equipment": [
+        "bands"
+      ],
+      "instructions": [
+        "To begin, stand on an exercise band so that tension begins at arm's length. Grasp the handles and lift them so that the hands are at shoulder height at each side.",
+        "Rotate the wrists so that the palms of your hands are facing forward. Your elbows should be bent, with the upper arms and forearms in line to the torso. This is your starting position.",
+        "As you exhale, lift the handles up until your arms are fully extended overhead."
+      ],
+      "name": "Shoulder Press - With Bands",
+      "primary_muscles": [
+        "shoulders"
+      ],
+      "secondary_muscles": [
+        "triceps"
+      ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
         "none"
       ],
       "instructions": [],
@@ -3943,6 +4341,23 @@
       "secondary_muscles": [
         "hamstrings"
       ]
+    },
+    {
+      "name": "Single-Leg Calf Raise",
+      "category": "strength",
+      "equipment": [
+        "none"
+      ],
+      "primary_muscles": [
+        "calves"
+      ],
+      "secondary_muscles": [],
+      "instructions": [
+        "Stand on one foot on the edge of a step, holding a wall or rail for balance.",
+        "Rise onto your toes as high as you can, pause, then lower your heel slowly below the step.",
+        "Finish all reps, then switch legs."
+      ],
+      "added": true
     },
     {
       "category": "strength",
@@ -4186,6 +4601,28 @@
       "secondary_muscles": []
     },
     {
+      "category": "plyometrics",
+      "equipment": [
+        "none"
+      ],
+      "instructions": [
+        "Assume a lunge stance position with one foot forward with the knee bent, and the rear knee nearly touching the ground.",
+        "Ensure that the front knee is over the midline of the foot.",
+        "Extending through both legs, jump as high as possible, swinging your arms to gain lift.",
+        "As you jump, bring your feet together, and move them back to their initial positions as you land.",
+        "Absorb the impact by reverting back to the starting position."
+      ],
+      "name": "Split Jump",
+      "primary_muscles": [
+        "quads"
+      ],
+      "secondary_muscles": [
+        "calves",
+        "glutes",
+        "hamstrings"
+      ]
+    },
+    {
       "category": "strength",
       "equipment": [
         "dumbbell"
@@ -4203,6 +4640,29 @@
       "secondary_muscles": [
         "glutes",
         "hamstrings"
+      ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
+        "bands"
+      ],
+      "instructions": [
+        "To start out, make sure that the exercise band is at an even split between both the left and right side of the body. To do this, use your hands to grab both sides of the band and place both feet in the middle of the band. Your feet should be shoulder width apart from each other.",
+        "When holding the bands, they should be the same height on each side. You should be using a pronated grip (palms facing forward) and have the handles of the bands next to your face for this exercise. This is the starting position.",
+        "Slowly start to bend the knees and lower the legs so that your thighs are parallel to the floor while exhaling.",
+        "Use the heel of your feet to push your body up to the starting position as you exhale.",
+        "Repeat for the recommended amount of repetitions."
+      ],
+      "name": "Squats - With Bands",
+      "primary_muscles": [
+        "quads"
+      ],
+      "secondary_muscles": [
+        "calves",
+        "glutes",
+        "hamstrings",
+        "lower back"
       ]
     },
     {
@@ -4434,6 +4894,42 @@
     {
       "category": "strength",
       "equipment": [
+        "none"
+      ],
+      "instructions": [
+        "To begin, stand up with both arms fully extended above the head holding one end of a towel with both hands. Your elbows should be in and the arms perpendicular to the floor with the palms facing each other while your feet should be shoulder width apart from each other. This is the starting position.",
+        "Now communicate with your partner so that he/she can grip the other side of the towel to apply resistance. Keeping your upper arms close to your head (elbows in) and perpendicular to the floor, lower the resistance in a semicircular motion behind your head until your forearms touch your biceps. Tip: The upper arms should remain stationary and only the forearms should move. Breathe in as you perform this step.",
+        "Go back to the starting position by using the triceps to raise the towel. Breathe out as you perform this step.",
+        "Repeat for the recommended amount of repetitions."
+      ],
+      "name": "Standing Towel Triceps Extension",
+      "primary_muscles": [
+        "triceps"
+      ],
+      "secondary_muscles": []
+    },
+    {
+      "category": "strength",
+      "equipment": [
+        "none"
+      ],
+      "instructions": [
+        "Stand facing a box or bench of an appropriate height with your feet together. This will be your starting position.",
+        "Begin the movement by stepping up, putting your left foot on the top of the bench. Extend through the hip and knee of your front leg to stand up on the box. As you stand on the box with your left leg, flex your right knee and hip, bringing your knee as high as you can.",
+        "Reverse this motion to step down off the box, and then repeat the sequence on the opposite leg."
+      ],
+      "name": "Step-up with Knee Raise",
+      "primary_muscles": [
+        "glutes"
+      ],
+      "secondary_muscles": [
+        "hamstrings",
+        "quads"
+      ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
         "barbell"
       ],
       "instructions": [
@@ -4546,6 +5042,26 @@
       ],
       "variation_on": [
         "deadlift"
+      ]
+    },
+    {
+      "category": "stretching",
+      "equipment": [
+        "none"
+      ],
+      "instructions": [
+        "To begin, lie straight and face down on the floor or exercise mat. Your arms should be fully extended in front of you. This is the starting position.",
+        "Simultaneously raise your arms, legs, and chest off of the floor and hold this contraction for 2 seconds. Tip: Squeeze your lower back to get the best results from this exercise. Remember to exhale during this movement. Note: When holding the contracted position, you should look like superman when he is flying.",
+        "Slowly begin to lower your arms, legs and chest back down to the starting position while inhaling.",
+        "Repeat for the recommended amount of repetitions prescribed in your program."
+      ],
+      "name": "Superman",
+      "primary_muscles": [
+        "lower back"
+      ],
+      "secondary_muscles": [
+        "glutes",
+        "hamstrings"
       ]
     },
     {
@@ -4727,6 +5243,28 @@
     {
       "category": "strength",
       "equipment": [
+        "none"
+      ],
+      "instructions": [
+        "To begin, lie down on the floor or an exercise mat with your back pressed against the floor. Your arms should be lying across your sides with the palms facing down.",
+        "Your legs should be crossed by wrapping one ankle around the other. Slowly elevate your legs up in the air until your thighs are perpendicular to the floor with a slight bend at the knees. Note: Your knees and toes should be parallel to the floor as opposed to the thighs.",
+        "Move your arms from the floor and cross them so they are resting on your chest. This is the starting position.",
+        "While keeping your lower back pressed against the floor, slowly lift your torso. Remember to exhale while perform this part of the exercise.",
+        "Slowly begin to lower your torso back down to the starting position while inhaling.",
+        "Repeat for the recommended amount of repetitions."
+      ],
+      "name": "Tuck Crunch",
+      "primary_muscles": [
+        "abs"
+      ],
+      "secondary_muscles": [],
+      "variation_on": [
+        "crunch"
+      ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
         "cable"
       ],
       "instructions": [
@@ -4778,6 +5316,25 @@
         "Repeat for the recommended amount of repetitions."
       ],
       "name": "Upright Cable Row",
+      "primary_muscles": [
+        "traps"
+      ],
+      "secondary_muscles": [
+        "shoulders"
+      ]
+    },
+    {
+      "category": "strength",
+      "equipment": [
+        "bands"
+      ],
+      "instructions": [
+        "To begin, stand on an exercise band so that tension begins at arm's length. Grasp the handles using a pronated (palms facing your thighs) grip that is slightly less than shoulder width. The handles should be resting on top of your thighs. Your arms should be extended with a slight bend at the elbows and your back should be straight. This will be your starting position.",
+        "Use your side shoulders to lift the handles as you exhale. The handles should be close to the body as you move them up. Continue to lift the handles until they nearly touches your chin. Tip: Your elbows should drive the motion. As you lift the handles, your elbows should always be higher than your forearms. Also, keep your torso stationary and pause for a second at the top of the movement.",
+        "Lower the handles back down slowly to the starting position. Inhale as you perform this portion of the movement.",
+        "Repeat for the recommended amount of repetitions."
+      ],
+      "name": "Upright Row - With Bands",
       "primary_muscles": [
         "traps"
       ],
