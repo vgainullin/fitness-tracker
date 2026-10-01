@@ -78,6 +78,13 @@
     ],
     "Cardio": [
       "Running, Treadmill", "Walking, Treadmill", "Bicycling, Stationary", "Elliptical Trainer", "Rowing, Stationary", "Stairmaster"
+    ],
+    "Home": [
+      "Push-Up Wide", "Decline Push-Up", "Incline Push-Up Close-Grip", "Cross Over - With Bands", "Lateral Raise - With Bands",
+      "Shoulder Press - With Bands", "Back Flyes - With Bands", "Upright Row - With Bands", "Hyperextensions With No Hyperextension Bench",
+      "Superman", "Standing Towel Triceps Extension", "Band Skullcrusher", "Squats - With Bands", "Band Good Morning", "Hip Lift with Band",
+      "Split Jump", "Step-up with Knee Raise", "Floor Glute-Ham Raise", "Calf Raises - With Bands", "Tuck Crunch", "Cross-Body Crunch",
+      "Alternate Heel Touchers"
     ]
   },
   "add": [
@@ -90,6 +97,18 @@
     { "name": "Burpees", "category": "cardio", "equipment": ["none"], "primary_muscles": ["quads"], "secondary_muscles": ["chest", "shoulders", "abs"],
       "instructions": ["From standing, squat and place your hands on the floor.", "Jump your feet back to a push-up position, then jump them back in.", "Jump up with your arms overhead."] },
     { "name": "Jumping Jacks", "category": "cardio", "equipment": ["none"], "primary_muscles": ["quads"], "secondary_muscles": ["calves", "shoulders"],
-      "instructions": ["Jump your feet out while raising your arms overhead, then jump back to the start."] }
+      "instructions": ["Jump your feet out while raising your arms overhead, then jump back to the start."] },
+    { "name": "Pike Push-Up", "category": "strength", "equipment": ["none"], "primary_muscles": ["shoulders"], "secondary_muscles": ["triceps"],
+      "instructions": ["Start in a push-up position, then walk your feet in and lift your hips so your body makes an upside-down V.", "Bend your elbows to lower the top of your head toward the floor between your hands.", "Press back up until your arms are straight. Put your feet on a step or chair to make it harder."] },
+    { "name": "Bodyweight Calf Raise", "category": "strength", "equipment": ["none"], "primary_muscles": ["calves"], "secondary_muscles": [],
+      "instructions": ["Stand with the balls of your feet on the edge of a step, heels hanging off, holding a wall or rail for balance.", "Rise up onto your toes as high as you can and pause.", "Lower your heels slowly below the step, then repeat."] },
+    { "name": "Single-Leg Calf Raise", "category": "strength", "equipment": ["none"], "primary_muscles": ["calves"], "secondary_muscles": [],
+      "instructions": ["Stand on one foot on the edge of a step, holding a wall or rail for balance.", "Rise onto your toes as high as you can, pause, then lower your heel slowly below the step.", "Finish all reps, then switch legs."] },
+    { "name": "Bodyweight Split Squat", "category": "strength", "equipment": ["none"], "primary_muscles": ["quads"], "secondary_muscles": ["glutes", "hamstrings"],
+      "instructions": ["Stand in a long stride with your back heel raised.", "Lower straight down until your back knee nearly touches the floor.", "Drive through your front heel to stand back up. Finish all reps, then switch legs."] },
+    { "name": "Band Bicep Curl", "category": "strength", "equipment": ["bands"], "primary_muscles": ["biceps"], "secondary_muscles": ["forearms"],
+      "instructions": ["Stand on the middle of a band and hold an end in each hand, palms facing forward.", "Keeping your elbows at your sides, curl your hands up toward your shoulders.", "Lower slowly against the band's pull."] },
+    { "name": "Band Row", "category": "strength", "equipment": ["bands"], "primary_muscles": ["middle back"], "secondary_muscles": ["lats", "biceps"],
+      "instructions": ["Anchor a band at chest height, or sit with your legs straight and loop it around your feet.", "Hold an end in each hand with arms straight, then pull your elbows back past your ribs, squeezing your shoulder blades.", "Return slowly until your arms are straight."] }
   ]
 }
