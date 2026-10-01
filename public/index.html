@@ -78,6 +78,30 @@
   .exercise-option .ex-name { flex: 1; font-size: 15px; }
   .exercise-option .pixel-icon { flex-shrink: 0; }
 
+  /* Exercise picker */
+  #exercise-picker .picker-sheet { height: 85vh; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
+  .picker-head { flex-shrink: 0; }
+  .picker-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .picker-body::-webkit-scrollbar { display: none; }
+  .picker-foot { flex-shrink: 0; padding: 12px 0 calc(16px + var(--safe-bottom)); border-top: 1px solid var(--border); }
+  .picker-foot .btn-primary:disabled { background: var(--bg-3); color: var(--text-faint); cursor: default; transform: none; }
+  .chip-row { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-top: 10px; }
+  .chip-row::-webkit-scrollbar { display: none; }
+  .chip-row:empty { display: none; }
+  .chip { flex-shrink: 0; background: var(--bg-2); border: 1px solid var(--border); border-radius: 20px; padding: 7px 13px; font-family: var(--font); font-size: 13px; font-weight: 600; color: var(--text-dim); cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; -webkit-tap-highlight-color: transparent; }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #0a0a0a; }
+  .chip .chip-count { font: 500 11px var(--mono); opacity: 0.7; }
+  .chip-row-sub .chip { font-size: 12px; font-weight: 500; padding: 5px 11px; }
+  .chip-row-sub .chip.active { background: rgba(232,168,76,0.15); color: var(--accent); }
+  .exercise-option .ex-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .exercise-option .ex-meta { font-size: 12px; color: var(--text-faint); }
+  .exercise-option .ex-meta .used { color: var(--accent-dim); }
+  .exercise-option .ex-check { width: 24px; height: 24px; flex-shrink: 0; border: 1.5px solid var(--bg-3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: transparent; }
+  .exercise-option.selected .ex-check { background: var(--accent); border-color: var(--accent); color: #0a0a0a; }
+  .exercise-option.added { opacity: 0.45; }
+  .exercise-option.added .ex-check { border-color: var(--green); color: var(--green); }
+  .picker-note { font-size: 12px; color: var(--text-dim); padding: 12px 0 0; }
+
   .workout-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
   .workout-timer { font-family: var(--mono); font-size: 14px; color: var(--accent); background: rgba(232,168,76,0.1); padding: 6px 12px; border-radius: 20px; }
   .exercise-block { margin-bottom: 12px; }
@@ -400,12 +424,21 @@
   </div></nav>
 </div>
 
-<div class="overlay" id="exercise-picker"><div class="overlay-sheet">
-  <div class="overlay-handle"></div>
-  <div class="flex items-center justify-between mb-16"><h2>Add Exercise</h2><button class="btn-ghost" onclick="closeOverlay('exercise-picker')">Cancel</button></div>
-  <input type="text" id="exercise-search" placeholder="Search exercises..." oninput="filterExercises(this.value)">
-  <div class="mt-8 mb-12"><button class="btn-ghost" onclick="showAddCustomExercise()" style="padding-left:0;font-size:14px;">+ Custom Exercise</button></div>
-  <div id="exercise-list"></div>
+<div class="overlay" id="exercise-picker"><div class="overlay-sheet picker-sheet">
+  <div class="picker-head">
+    <div class="overlay-handle"></div>
+    <div class="flex items-center justify-between mb-12"><h2 id="picker-title">Add Exercises</h2><button class="btn-ghost" onclick="closeOverlay('exercise-picker')">Cancel</button></div>
+    <input type="text" id="exercise-search" placeholder="Search exercises..." oninput="renderExercisePicker()">
+    <div class="chip-row" id="picker-groups"></div>
+    <div class="chip-row chip-row-sub" id="picker-muscles"></div>
+  </div>
+  <div class="picker-body" id="picker-body">
+    <div id="exercise-list"></div>
+    <div class="mt-8 mb-12"><button class="btn-ghost" onclick="showAddCustomExercise()" style="padding-left:0;font-size:14px;">+ Custom Exercise</button></div>
+  </div>
+  <div class="picker-foot" id="picker-foot">
+    <button class="btn btn-primary" id="picker-add-btn" onclick="addPickedExercises()" disabled>Select exercises</button>
+  </div>
 </div></div>
 
 <div class="overlay" id="custom-exercise-overlay"><div class="overlay-sheet">
@@ -1497,32 +1530,204 @@ function discardWorkout() {
 // EXERCISE PICKER
 // ============================================
 
-function openExercisePicker() {
-  document.getElementById('exercise-search').value='';
-  renderExerciseList(state.exercises);
-  document.getElementById('exercise-picker').classList.add('open');
-  setTimeout(()=>document.getElementById('exercise-search').focus(),300);
-}
-function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
-function filterExercises(q) {
-  const ql=q.toLowerCase();
-  renderExerciseList(state.exercises.filter(e=>e.name.toLowerCase().includes(ql)||e.muscleGroup.toLowerCase().includes(ql)));
-}
-function renderExerciseList(exercises) {
-  const c=document.getElementById('exercise-list');
-  const groups={};
-  exercises.forEach(e=>{if(!groups[e.muscleGroup])groups[e.muscleGroup]=[];groups[e.muscleGroup].push(e);});
-  let h='';
-  Object.keys(groups).sort().forEach(g=>{
-    h+='<div class="exercise-group-label">'+pixelArtSVG(g, 14)+' '+g+'</div>';
-    groups[g].forEach(e=>{
-      const tip = getExerciseTip(e.name);
-      const tipHtml = tip ? ' <span class="dim small" style="font-size:11px;">-- '+tip.substring(0,60)+'...</span>' : '';
-      h+='<div class="exercise-option" onclick="selectExercise(\''+e.id+'\',\''+e.name.replace(/'/g,"\\'")+ '\')">'+pixelArtSVG(e.muscleGroup, 20)+'<span class="ex-name">'+e.name+tipHtml+'</span></div>';
+const PICKER_GROUPS = ['Chest','Back','Shoulders','Arms','Legs','Core','Other'];
+// group: 'frequent' | 'all' | a PICKER_GROUPS entry; muscle: raw primary muscle within the group
+let picker = { group: 'all', muscle: null, selected: [], rows: [] };
+
+function titleCase(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+// How often each exercise appears in history: workouts containing it, and when it was last done.
+function getExerciseUsage() {
+  const usage = {};
+  state.workoutHistory.forEach(w => {
+    const t = new Date(w.date).getTime() || 0;
+    new Set(w.exercises.map(ex => ex.exerciseName)).forEach(name => {
+      const u = usage[name] || (usage[name] = { count: 0, last: 0 });
+      u.count++;
+      if (t > u.last) u.last = t;
     });
   });
-  c.innerHTML=h||'<div class="empty-state"><p>No exercises found</p></div>';
+  return usage;
 }
+
+function compareByUsage(a, b) {
+  return b.usage.count - a.usage.count || b.usage.last - a.usage.last || a.name.localeCompare(b.name);
+}
+
+// Unused exercises: ones in your presets, then strength work, then alphabetical.
+function compareUnused(a, b) {
+  const rank = e => (e.inPreset ? 0 : 2) + (e.category === 'strength' ? 0 : 1);
+  return rank(a) - rank(b) || a.name.localeCompare(b.name);
+}
+
+function getPickerCandidates() {
+  const usage = getExerciseUsage();
+  const none = { count: 0, last: 0 };
+  const known = new Set();
+  const inPresets = new Set(state.presets.flatMap(p => p.exercises.map(e => e.exerciseName)));
+  const list = state.exercises.map(e => {
+    known.add(e.name);
+    return { id: e.id, name: e.name, muscleGroup: e.muscleGroup || 'Other', muscle: (e.primary_muscles || [])[0] || null,
+      equipment: (e.equipment || []).filter(q => q !== 'none' && q !== 'other'), category: e.category || '',
+      inPreset: inPresets.has(e.name), usage: usage[e.name] || none };
+  });
+  // Exercises logged in history but missing from the database (e.g. custom ones) still belong to the user.
+  Object.keys(usage).forEach(name => {
+    if (known.has(name)) return;
+    list.push({ id: 'ex_name_' + name, name, muscleGroup: 'Other', muscle: null, equipment: [], category: '', usage: usage[name] });
+  });
+  return list;
+}
+
+function formatAgo(ts) {
+  const days = Math.floor((Date.now() - ts) / 86400000);
+  if (days <= 0) return 'today';
+  if (days < 14) return days + 'd ago';
+  if (days < 60) return Math.floor(days / 7) + 'w ago';
+  return Math.floor(days / 30) + 'mo ago';
+}
+
+function openExercisePicker() {
+  document.getElementById('exercise-search').value = '';
+  picker.selected = [];
+  picker.muscle = null;
+  picker.group = state.workoutHistory.length ? 'frequent' : 'all';
+  document.getElementById('picker-title').textContent = pendingPresetReplace ? 'Replace Exercise' : 'Add Exercises';
+  document.getElementById('picker-foot').style.display = pendingPresetReplace ? 'none' : '';
+  renderExercisePicker();
+  document.getElementById('picker-body').scrollTop = 0;
+  document.getElementById('exercise-picker').classList.add('open');
+}
+function closeOverlay(id) {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'exercise-picker') pendingPresetReplace = null;
+}
+
+function setPickerGroup(group) {
+  picker.group = group;
+  picker.muscle = null;
+  renderExercisePicker();
+  document.getElementById('picker-body').scrollTop = 0;
+}
+function setPickerMuscle(muscle) {
+  picker.muscle = picker.muscle === muscle ? null : muscle;
+  renderExercisePicker();
+  document.getElementById('picker-body').scrollTop = 0;
+}
+
+function pickerMatches(e, terms) {
+  const hay = (e.name + ' ' + e.muscleGroup + ' ' + (e.muscle || '') + ' ' + e.equipment.join(' ')).toLowerCase();
+  return terms.every(t => hay.includes(t));
+}
+
+function renderExercisePicker() {
+  const all = getPickerCandidates();
+  const q = document.getElementById('exercise-search').value.trim().toLowerCase();
+  const terms = q ? q.split(/\s+/) : [];
+  const inWorkout = new Set((state.currentWorkout ? state.currentWorkout.exercises : []).map(e => e.exerciseName));
+  const selected = new Set(picker.selected.map(s => s.name));
+  const used = all.filter(e => e.usage.count > 0);
+
+  // Category chips: Frequent, All, then each muscle group (with how many of yours are in it).
+  const groupChips = [{ key: 'frequent', label: '★ Frequent', count: used.length }, { key: 'all', label: 'All' }]
+    .concat(PICKER_GROUPS.filter(g => all.some(e => e.muscleGroup === g)).map(g => ({ key: g, label: g, count: used.filter(e => e.muscleGroup === g).length })));
+  document.getElementById('picker-groups').innerHTML = groupChips.map(c =>
+    '<button class="chip'+(picker.group === c.key ? ' active' : '')+'" onclick="setPickerGroup(\''+c.key+'\')">'+c.label+
+    (c.count ? '<span class="chip-count">'+c.count+'</span>' : '')+'</button>').join('');
+
+  // Sub-muscle chips for the selected group, most-used muscles first.
+  let muscleHtml = '';
+  if (PICKER_GROUPS.includes(picker.group)) {
+    const muscles = {};
+    all.forEach(e => {
+      if (e.muscleGroup !== picker.group || !e.muscle) return;
+      const m = muscles[e.muscle] || (muscles[e.muscle] = { total: 0, used: 0 });
+      m.total++;
+      if (e.usage.count) m.used += e.usage.count;
+    });
+    const keys = Object.keys(muscles).sort((a, b) => muscles[b].used - muscles[a].used || muscles[b].total - muscles[a].total);
+    if (keys.length > 1) {
+      muscleHtml = keys.map(m => '<button class="chip'+(picker.muscle === m ? ' active' : '')+'" onclick="setPickerMuscle(\''+m+'\')">'+titleCase(m)+'</button>').join('');
+    }
+  }
+  document.getElementById('picker-muscles').innerHTML = muscleHtml;
+
+  let scope = picker.group === 'frequent' ? used
+    : picker.group === 'all' ? all
+    : all.filter(e => e.muscleGroup === picker.group && (!picker.muscle || e.muscle === picker.muscle));
+  let note = '';
+  if (terms.length) {
+    let matches = scope.filter(e => pickerMatches(e, terms));
+    if (!matches.length && scope !== all) {
+      matches = all.filter(e => pickerMatches(e, terms));
+      if (matches.length) note = 'Nothing in this category matches. Showing all exercises.';
+    }
+    scope = matches;
+  } else if (picker.group === 'frequent' && !used.length) {
+    note = 'Exercises you log will show up here, most used first. Pick a muscle group above to browse.';
+  }
+
+  const mine = scope.filter(e => e.usage.count > 0).sort(compareByUsage);
+  const rest = picker.group === 'frequent' ? [] : scope.filter(e => !e.usage.count).sort(compareUnused);
+  picker.rows = mine.concat(rest);
+
+  const groupLabel = picker.muscle ? titleCase(picker.muscle) : PICKER_GROUPS.includes(picker.group) ? picker.group : '';
+  const row = (e, i) => {
+    const added = inWorkout.has(e.name);
+    const meta = [e.muscle ? titleCase(e.muscle) : e.muscleGroup];
+    if (e.equipment.length) meta.push(e.equipment[0]);
+    const usedHtml = e.usage.count ? ' · <span class="used">'+e.usage.count+'× · '+formatAgo(e.usage.last)+'</span>' : '';
+    const cls = 'exercise-option' + (added ? ' added' : selected.has(e.name) ? ' selected' : '');
+    return '<div class="'+cls+'" onclick="pickExercise('+i+')">'+pixelArtSVG(e.muscleGroup, 20)+
+      '<div class="ex-main"><span class="ex-name">'+escapeHtml(e.name)+'</span><span class="ex-meta">'+escapeHtml(meta.join(' · '))+usedHtml+'</span></div>'+
+      '<span class="ex-check">✓</span></div>';
+  };
+  let h = note ? '<p class="picker-note">'+note+'</p>' : '';
+  if (mine.length && rest.length) h += '<div class="exercise-group-label">Yours'+(groupLabel ? ' · '+groupLabel : '')+'</div>';
+  h += mine.map((e, i) => row(e, i)).join('');
+  if (rest.length && (mine.length || !terms.length)) h += '<div class="exercise-group-label">'+(mine.length ? 'More' : 'All')+(groupLabel ? ' · '+groupLabel : ' exercises')+'</div>';
+  h += rest.map((e, i) => row(e, mine.length + i)).join('');
+  if (!picker.rows.length && !note) h = '<div class="empty-state"><p>No exercises found</p></div>';
+  document.getElementById('exercise-list').innerHTML = h;
+  updatePickerFoot();
+}
+
+function updatePickerFoot() {
+  const btn = document.getElementById('picker-add-btn');
+  const n = picker.selected.length;
+  btn.disabled = !n;
+  btn.textContent = n ? 'Add ' + n + ' exercise' + (n === 1 ? '' : 's') : 'Select exercises';
+}
+
+function pickExercise(i) {
+  const e = picker.rows[i];
+  if (!e || !state.currentWorkout) return;
+  if (pendingPresetReplace) { selectExercise(e.id, e.name); return; }
+  if (state.currentWorkout.exercises.some(x => x.exerciseName === e.name)) { toast('Already in workout'); return; }
+  const at = picker.selected.findIndex(s => s.name === e.name);
+  if (at === -1) picker.selected.push({ id: e.id, name: e.name });
+  else picker.selected.splice(at, 1);
+  renderExercisePicker();
+}
+
+function addPickedExercises() {
+  if (!state.currentWorkout || !picker.selected.length) return;
+  const n = picker.selected.length;
+  picker.selected.forEach(s => addExerciseToWorkout(s.id, s.name));
+  picker.selected = [];
+  closeOverlay('exercise-picker');
+  renderWorkout();
+  toast(n === 1 ? 'Exercise added' : n + ' exercises added');
+}
+
+function addExerciseToWorkout(eid, ename) {
+  if (state.currentWorkout.exercises.some(e => e.exerciseName === ename)) return false;
+  const prevSets = getPreviousSession(ename);
+  const prev = prevSets && prevSets[0] ? prevSets[0] : getPreviousBest(ename);
+  state.currentWorkout.exercises.push({exerciseId:eid,exerciseName:ename,comment:'',sets:[{id:'set_'+Date.now().toString(36),weight:prev.weight,reps:prev.reps,effort:''}]});
+  return true;
+}
+
 function selectExercise(eid,ename) {
   if(!state.currentWorkout) return;
   if (pendingPresetReplace) {
@@ -1545,11 +1750,9 @@ function selectExercise(eid,ename) {
     }
     return;
   }
-  if(state.currentWorkout.exercises.find(e=>e.exerciseId===eid)){closeOverlay('exercise-picker');toast('Already added');return;}
-  const prevSets = getPreviousSession(ename);
-  const prev = prevSets && prevSets[0] ? prevSets[0] : getPreviousBest(ename);
-  state.currentWorkout.exercises.push({exerciseId:eid,exerciseName:ename,comment:'',sets:[{id:'set_'+Date.now().toString(36),weight:prev.weight,reps:prev.reps,effort:''}]});
-  closeOverlay('exercise-picker');renderWorkout();
+  closeOverlay('exercise-picker');
+  if(!addExerciseToWorkout(eid,ename)){toast('Already added');return;}
+  renderWorkout();
 }
 
 function startPresetReplace(xi, oldName) {
@@ -1575,7 +1778,14 @@ function declinePresetSave() {
   document.getElementById('preset-replace-confirm').style.display = 'none';
 }
 function showAddCustomExercise() {
+  // Keep anything already ticked in the picker rather than dropping it.
+  if (picker.selected.length && state.currentWorkout && !pendingPresetReplace) {
+    picker.selected.forEach(s => addExerciseToWorkout(s.id, s.name));
+    picker.selected = [];
+    renderWorkout();
+  }
   closeOverlay('exercise-picker');document.getElementById('custom-ex-name').value='';
+  if (PICKER_GROUPS.includes(picker.group)) document.getElementById('custom-ex-group').value = picker.group;
   document.getElementById('custom-exercise-overlay').classList.add('open');
 }
 function addCustomExercise() {
