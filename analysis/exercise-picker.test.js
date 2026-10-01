@@ -59,15 +59,17 @@ function loadApp() {
   return { run, el: id => document.getElementById(id) };
 }
 
-function workout(date, names) {
-  return { id: 'w' + date, date, exercises: names.map(n => ({ exerciseName: n, sets: [{ weight: 50, reps: 8, effort: '' }] })) };
+// Dates are relative to now so the "recent" window doesn't drift as the tests age.
+function workout(daysAgo, names) {
+  const date = new Date(Date.now() - daysAgo * 86400000).toISOString();
+  return { id: 'w' + daysAgo, date, exercises: names.map(n => ({ exerciseName: n, sets: [{ weight: 50, reps: 8, effort: '' }] })) };
 }
 
 const HISTORY = [
-  workout('2026-09-20', ['Barbell Squat', 'Leg Press', 'Barbell Bench Press']),
-  workout('2026-09-10', ['Barbell Squat', 'Barbell Bench Press', 'My Odd Machine']),
-  workout('2026-09-01', ['Barbell Squat', 'Leg Press']),
-  workout('2026-08-01', ['Lying Leg Curls']),
+  workout(10, ['Barbell Squat', 'Leg Press', 'Barbell Bench Press']),
+  workout(20, ['Barbell Squat', 'Barbell Bench Press', 'My Odd Machine']),
+  workout(30, ['Barbell Squat', 'Leg Press']),
+  workout(60, ['Lying Leg Curls']),
 ];
 
 function setup() {
@@ -102,7 +104,11 @@ test('muscle group chips narrow the list, with your exercises first', () => {
   app.run("openExercisePicker(); setPickerGroup('Legs')");
   const names = rowNames(app);
   assert.deepEqual(names.slice(0, 3), ['Barbell Squat', 'Leg Press', 'Lying Leg Curls']);
-  assert.ok(names.length > 100);
+  // Un-logged exercises are paged so the list stays fast; "Show all" expands it.
+  assert.equal(names.length, 3 + 50);
+  assert.match(app.el('exercise-list').innerHTML, /Show all \d+/);
+  app.run('showAllPickerRows()');
+  assert.ok(rowNames(app).length > 100);
   assert.ok(app.run("picker.rows.every(r => r.muscleGroup === 'Legs')"));
   assert.match(app.el('exercise-list').innerHTML, /Yours · Legs/);
   // Sub-muscle chips appear for the group; the most used muscle leads.
@@ -165,4 +171,20 @@ test('exercises from your presets lead the ones you have never logged', () => {
   const presetLegs = [...new Set(runJson(app, "state.presets.flatMap(p => p.exercises.map(e => e.exerciseName)).filter(n => picker.rows.some(r => r.name === n))"))];
   assert.ok(presetLegs.length >= 5);
   assert.deepEqual(names.slice(0, presetLegs.length).sort(), presetLegs.sort());
+});
+
+test('lifts you stopped doing drop below your current ones', () => {
+  const app = loadApp();
+  const old = Array.from({ length: 6 }, (_, i) => workout(200 + i * 7, ['Barbell Deadlift']));
+  const recent = [workout(3, ['Barbell Squat']), workout(10, ['Barbell Squat'])];
+  app.run(`state.workoutHistory = ${JSON.stringify(recent.concat(old))}; startWorkout(); openExercisePicker();`);
+  assert.deepEqual(rowNames(app), ['Barbell Squat', 'Barbell Deadlift']);
+});
+
+test('replace opens on the muscle of the exercise being replaced', () => {
+  const app = setup();
+  app.run("startFromPreset('preset_legs1'); startPresetReplace(2, 'Romanian Deadlift')");
+  assert.equal(app.run('picker.group'), 'Legs');
+  assert.equal(app.run('picker.muscle'), 'hamstrings');
+  assert.equal(rowNames(app)[0], 'Lying Leg Curls');
 });
