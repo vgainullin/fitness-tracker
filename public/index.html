@@ -164,8 +164,11 @@
   .set-row.header span { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
   .set-num { font-family: var(--mono); font-size: 14px; color: var(--text-dim); text-align: center; }
   .set-row input[type="number"] { font-size: 17px; padding: 10px 6px; }
-  .set-input-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-  .prev-val { font-size: 10px; color: var(--text-faint); font-family: var(--mono); line-height: 1; }
+  /* Last session's value sits under its box without changing the box's height, so the
+     weight and reps boxes stay level whether or not each one has a previous value. */
+  .set-input-cell { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .prev-val { position: absolute; top: 100%; left: 0; right: 0; margin-top: 3px; text-align: center; font-size: 10px; color: var(--text-faint); font-family: var(--mono); line-height: 1; }
+  .set-row.has-prev { padding-bottom: 18px; }
   .set-delete { background: none; border: none; color: var(--text-faint); font-size: 18px; cursor: pointer; padding: 8px; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
   .set-delete:active { color: var(--red); background: rgba(212,80,80,0.1); }
 
@@ -2223,7 +2226,7 @@ function renderWorkout() {
     h+='<div class="set-row header"><span>Set</span><span style="text-align:center">Wt</span><span style="text-align:center">Reps</span><span style="text-align:center">Effort</span><span></span></div>';
     ex.sets.forEach((s,si)=>{
       const ps = prevSets && prevSets[si];
-      h+='<div class="set-row"><span class="set-num">'+(si+1)+'</span>';
+      h+='<div class="set-row'+(ps && (ps.weight || ps.reps) ? ' has-prev' : '')+'"><span class="set-num">'+(si+1)+'</span>';
       h+='<div class="set-input-cell"><input type="number" value="'+(s.weight||'')+'" placeholder="'+(bw ? 'BW' : '0')+'" onchange="updateSet('+xi+','+si+',\'weight\',this.value)">'+(ps && ps.weight ? '<span class="prev-val">'+ps.weight+'</span>' : '')+'</div>';
       h+='<div class="set-input-cell"><input type="number" inputmode="numeric" value="'+(s.reps||'')+'" placeholder="0" onchange="updateSet('+xi+','+si+',\'reps\',this.value)">'+(ps && ps.reps ? '<span class="prev-val">'+ps.reps+'</span>' : '')+'</div>';
       h+='<div class="effort-toggle">';
