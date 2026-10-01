@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="progress-engine.js"></script>
+<script src="pictograms.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -238,6 +239,7 @@
   /* Pixel art */
   .pixel-icon { image-rendering: pixelated; width: 24px; height: 24px; }
   .pixel-icon-lg { image-rendering: pixelated; width: 32px; height: 32px; }
+  .ex-pictogram { flex-shrink: 0; }
 
   /* Tips */
   .tip-toggle { background: none; border: none; color: var(--blue); font-family: var(--font); font-size: 12px; cursor: pointer; padding: 4px 0; }
@@ -492,7 +494,8 @@ const DAY_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','S
 
 // Exercise database loaded from exercises.json at init
 let exerciseDb = { categories: [], equipment: [], exercises: [] };
-let exerciseIndex = {}; // name -> exercise lookup
+let exerciseIndex = {}; // name -> exercise lookup (library and archive)
+let archivedExercises = []; // trimmed from the picker, still known for history
 
 // Map granular muscle names to display groups
 const MUSCLE_GROUP_MAP = {
@@ -515,19 +518,37 @@ function getExerciseTip(name) {
   return ex.instructions.join(' ');
 }
 
-async function loadExerciseDb() {
-  const resp = await fetch('exercises.json');
-  exerciseDb = await resp.json();
-  exerciseDb.exercises.forEach(ex => { exerciseIndex[ex.name.toLowerCase()] = ex; });
-  // Build state.exercises from DB
-  state.exercises = exerciseDb.exercises.map(ex => ({
+function toAppExercise(ex) {
+  return {
     id: 'ex_' + ex.name.toLowerCase().replace(/[^a-z0-9]/g,'_').substring(0,30),
     name: ex.name,
     muscleGroup: getExerciseMuscleGroup(ex),
     category: ex.category,
     equipment: ex.equipment,
     primary_muscles: ex.primary_muscles,
-  }));
+  };
+}
+
+async function loadExerciseDb() {
+  // exercises.json is the curated library offered in the picker. The archive holds
+  // the rest of the original database so older workouts keep their muscles and tips.
+  const [resp, archive] = await Promise.all([
+    fetch('exercises.json').then(r => r.json()),
+    fetch('exercises-archive.json').then(r => r.ok ? r.json() : { exercises: [] }).catch(() => ({ exercises: [] })),
+  ]);
+  exerciseDb = resp;
+  const library = exerciseDb.exercises;
+  exerciseDb.exercises = library.concat(archive.exercises || []);
+  exerciseDb.exercises.forEach(ex => { exerciseIndex[ex.name.toLowerCase()] ||= ex; });
+  state.exercises = library.map(toAppExercise);
+  archivedExercises = (archive.exercises || []).map(toAppExercise);
+}
+
+// Library first, then the archive, so a workout logged with a trimmed exercise
+// keeps its muscle group and icon.
+function findExercise(name, id) {
+  const match = x => (id && x.id === id) || x.name === name;
+  return state.exercises.find(match) || archivedExercises.find(match);
 }
 
 const DEFAULT_PRESETS = [
@@ -649,11 +670,12 @@ const PIXEL_ART = {
   ],
 };
 
+const GROUP_COLORS = { Chest:'#d45050', Back:'#5a8fd4', Legs:'#5aad6a', Shoulders:'#9a6dd7', Arms:'#e8a84c', Core:'#e8a84c', Other:'#8a8580' };
+
 function pixelArtSVG(group, size) {
   size = size || 24;
   const rows = PIXEL_ART[group] || PIXEL_ART.Other;
-  const colors = { Chest:'#d45050', Back:'#5a8fd4', Legs:'#5aad6a', Shoulders:'#9a6dd7', Arms:'#e8a84c', Core:'#e8a84c', Other:'#8a8580' };
-  const c = colors[group] || colors.Other;
+  const c = GROUP_COLORS[group] || GROUP_COLORS.Other;
   let rects = '';
   for (let y = 0; y < 8; y++) {
     for (let x = 0; x < 8; x++) {
@@ -661,6 +683,14 @@ function pixelArtSVG(group, size) {
     }
   }
   return '<svg viewBox="0 0 8 8" width="'+size+'" height="'+size+'" class="pixel-icon" style="image-rendering:pixelated">'+rects+'</svg>';
+}
+
+// Pose pictogram for an exercise (see pictograms.js), tinted by muscle group.
+// Custom exercises get a pose from their name or muscle group.
+function exerciseIcon(name, group, size) {
+  if (typeof Pictograms === 'undefined') return pixelArtSVG(group, size);
+  const ex = exerciseIndex[String(name).toLowerCase()] || { name, muscleGroup: group };
+  return Pictograms.render(ex, { size, color: GROUP_COLORS[group] || '#e8e4df', className: 'ex-pictogram', title: name });
 }
 
 function youtubeLink(exerciseName, cls) {
@@ -893,7 +923,7 @@ async function loadDataFromSheets() {
       if (!wk.notes && r[7]) wk.notes = r[7];
       let ex = wk.exercises.find(e => e.exerciseName === exName);
       if (!ex) {
-        const exDef = state.exercises.find(x => x.name === exName);
+        const exDef = findExercise(exName);
         ex = { exerciseId: exDef ? exDef.id : 'ex_name_'+exName, exerciseName: exName, sets: [] };
         wk.exercises.push(ex);
       }
@@ -1212,7 +1242,7 @@ function getPresetMuscleGroups() {
   const groups = new Set();
   state.presets.forEach(p => {
     p.exercises.forEach(e => {
-      const mg = (state.exercises.find(x => x.name === e.exerciseName) || {}).muscleGroup;
+      const mg = (findExercise(e.exerciseName) || {}).muscleGroup;
       if (mg) groups.add(mg);
     });
   });
@@ -1226,7 +1256,7 @@ function getMuscleRecency() {
   for (const w of state.workoutHistory) {
     const wDate = new Date(w.date).getTime();
     for (const ex of w.exercises) {
-      const mg = (state.exercises.find(e => e.id === ex.exerciseId) || {}).muscleGroup;
+      const mg = (findExercise(ex.exerciseName, ex.exerciseId) || {}).muscleGroup;
       if (mg && activeGroups.includes(mg) && !lastTrained[mg]) lastTrained[mg] = wDate;
     }
     if (Object.keys(lastTrained).length === activeGroups.length) break;
@@ -1311,7 +1341,7 @@ function renderPresetsList() {
   const recency = getMuscleRecency();
   const scored = state.presets.map(p => {
     const groups = [...new Set(p.exercises.map(e => {
-      return (state.exercises.find(x => x.name === e.exerciseName) || {}).muscleGroup;
+      return (findExercise(e.exerciseName) || {}).muscleGroup;
     }).filter(Boolean))];
     const score = Math.max(0, ...groups.map(g => recency[g] !== null ? recency[g] : 999));
     return { p, score };
@@ -1446,7 +1476,7 @@ function startFromPreset(pid) {
       const prev = prevSets && prevSets[i] ? prevSets[i] : fallback;
       sets.push({id:'set_'+Date.now().toString(36)+'_'+i, weight:prev.weight, reps:prev.reps, effort:''});
     }
-    const found = state.exercises.find(x => x.name === e.exerciseName);
+    const found = findExercise(e.exerciseName);
     return { exerciseId: found ? found.id : 'ex_'+Date.now().toString(36), exerciseName:e.exerciseName, sets };
   });
   state.currentWorkout = { id:'wk_'+Date.now().toString(36), startTime:Date.now(), exercises, presetName:p.name };
@@ -1905,10 +1935,10 @@ function renderWorkout() {
   const activePreset = state.currentWorkout.presetName ? state.presets.find(p=>p.name===state.currentWorkout.presetName) : null;
   state.currentWorkout.exercises.forEach((ex,xi)=>{
     const tip = getExerciseTip(ex.exerciseName);
-    const mg = (state.exercises.find(e=>e.id===ex.exerciseId)||{}).muscleGroup||'Other';
+    const mg = (findExercise(ex.exerciseName, ex.exerciseId)||{}).muscleGroup||'Other';
     const inPreset = activePreset && activePreset.exercises.some(e=>e.exerciseName===ex.exerciseName);
     const replaceBtn = inPreset ? '<button class="btn-ghost" onclick="startPresetReplace('+xi+',\''+ex.exerciseName.replace(/'/g,"\\'")+'\')" style="color:var(--text-dim);font-size:12px;">Replace</button>' : '';
-    h+='<div class="exercise-block card mb-12"><div class="exercise-block-header">'+pixelArtSVG(mg,20)+'<h3 style="margin-left:8px;flex:1;">'+youtubeLink(ex.exerciseName)+'</h3>'+replaceBtn+'<button class="btn-ghost" onclick="confirmRemoveExercise('+xi+')" style="color:var(--text-faint);font-size:12px;">Remove</button></div>';
+    h+='<div class="exercise-block card mb-12"><div class="exercise-block-header">'+exerciseIcon(ex.exerciseName,mg,32)+'<h3 style="margin-left:8px;flex:1;">'+youtubeLink(ex.exerciseName)+'</h3>'+replaceBtn+'<button class="btn-ghost" onclick="confirmRemoveExercise('+xi+')" style="color:var(--text-faint);font-size:12px;">Remove</button></div>';
     if (tip) {
       h+='<div id="tip-'+xi+'" style="display:none;" class="tip-text">'+tip+'</div>';
       h+='<button class="tip-toggle" onclick="var el=document.getElementById(\'tip-'+xi+'\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Form tip</button>';
@@ -1958,7 +1988,7 @@ function renderCorePills() {
 function addCoreExercise(name) {
   if (!state.currentWorkout) return;
   if (state.currentWorkout.exercises.find(e => e.exerciseName === name)) { toast('Already added'); return; }
-  const ex = state.exercises.find(x => x.name === name);
+  const ex = findExercise(name);
   const id = ex ? ex.id : 'ex_' + name.toLowerCase().replace(/[^a-z0-9]/g,'_');
   const prev = getPreviousBest(name);
   state.currentWorkout.exercises.push({ exerciseId: id, exerciseName: name, comment: '', sets: [{ id: 'set_'+Date.now().toString(36), weight: prev.weight, reps: prev.reps, effort: '' }] });
@@ -2057,13 +2087,13 @@ function showWorkoutDetail(idx) {
   document.getElementById('detail-title').textContent=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
   let h='<div class="dim small mb-16">'+(w.durationMinutes||'--')+' minutes'+(w.presetName?' -- '+w.presetName:'')+'</div>'+renderWorkoutProgressAnnotation(getWorkoutProgressEvent(w), true);
   w.exercises.forEach(ex=>{
-    const mg = (state.exercises.find(e=>e.id===ex.exerciseId)||{}).muscleGroup||'Other';
+    const mg = (findExercise(ex.exerciseName, ex.exerciseId)||{}).muscleGroup||'Other';
     const trend = getExerciseTrend(ex.exerciseName, idx);
     const trendHtml = trend==='up' ? '<span style="color:var(--green);font-size:15px;margin-left:6px;line-height:1;">↑</span>'
                     : trend==='down' ? '<span style="color:var(--red);font-size:15px;margin-left:6px;line-height:1;">↓</span>'
                     : trend==='flat' ? '<span style="color:var(--text-faint);font-size:15px;margin-left:6px;line-height:1;">→</span>'
                     : '';
-    h+='<div class="exercise-block mb-16"><div class="flex items-center gap-8 mb-8">'+pixelArtSVG(mg,20)+'<h3>'+youtubeLink(ex.exerciseName)+trendHtml+'</h3></div>';
+    h+='<div class="exercise-block mb-16"><div class="flex items-center gap-8 mb-8">'+exerciseIcon(ex.exerciseName,mg,28)+'<h3>'+youtubeLink(ex.exerciseName)+trendHtml+'</h3></div>';
     h+='<div class="set-row header"><span>Set</span><span style="text-align:center">Wt</span><span style="text-align:center">Reps</span><span style="text-align:center">Effort</span><span></span></div>';
     ex.sets.forEach((s,i)=>{
       const el=s.effort?s.effort.charAt(0).toUpperCase()+s.effort.slice(1):'--';
@@ -2206,7 +2236,7 @@ function buildAiPrompt() {
   const todayMuscleGroups = new Set();
   if (preset) {
     preset.exercises.forEach(e => {
-      const found = state.exercises.find(x => x.name === e.exerciseName);
+      const found = findExercise(e.exerciseName);
       if (found) todayMuscleGroups.add(found.muscleGroup);
     });
   }
@@ -2318,7 +2348,7 @@ async function startFromAiSuggestion() {
   if (!cached || !cached.suggestion) { toast('No AI suggestion available', true); return; }
   const suggestion = cached.suggestion;
   const exercises = (suggestion.exercises || []).map((e, ei) => {
-    const found = state.exercises.find(x => x.name === e.exerciseName);
+    const found = findExercise(e.exerciseName);
     const sets = [];
     for (let i = 0; i < (e.sets || 3); i++) {
       sets.push({ id: 'set_' + (Date.now() + ei * 100 + i).toString(36), weight: e.weight || 0, reps: e.reps || 0, effort: '' });
@@ -2486,7 +2516,7 @@ function resolveCoachTool(name, input) {
       const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
       const groups = {};
       state.workoutHistory.forEach(w => w.exercises.forEach(ex => {
-        const mg = (state.exercises.find(e => e.name === ex.exerciseName) || {}).muscleGroup || 'Other';
+        const mg = (findExercise(ex.exerciseName) || {}).muscleGroup || 'Other';
         groups[mg] = (groups[mg] || 0) + 1;
       }));
       return { total: state.workoutHistory.length, thisWeek, thisMonth, avgDurationMinutes: avgDur, exercisesByMuscleGroup: groups };
