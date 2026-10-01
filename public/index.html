@@ -544,6 +544,20 @@ async function loadExerciseDb() {
   archivedExercises = (archive.exercises || []).map(toAppExercise);
 }
 
+// Anything you have logged or put in a preset is never "trimmed": move it from the archive
+// back into the main list so the picker offers it like any library exercise.
+function restoreLoggedExercises() {
+  if (!archivedExercises.length) return;
+  const used = new Set();
+  (state.workoutHistory || []).forEach(w => (w.exercises || []).forEach(e => used.add(e.exerciseName)));
+  (state.presets || []).forEach(p => (p.exercises || []).forEach(e => used.add(e.exerciseName)));
+  ((state.currentWorkout && state.currentWorkout.exercises) || []).forEach(e => used.add(e.exerciseName));
+  const restore = archivedExercises.filter(e => used.has(e.name));
+  if (!restore.length) return;
+  archivedExercises = archivedExercises.filter(e => !used.has(e.name));
+  state.exercises = state.exercises.concat(restore);
+}
+
 // Library first, then the archive, so a workout logged with a trimmed exercise
 // keeps its muscle group and icon.
 function findExercise(name, id) {
@@ -930,6 +944,7 @@ async function loadDataFromSheets() {
       ex.sets.push({ weight: parseFloat(r[3])||0, reps: parseInt(r[4])||0, effort: r[5]||'' });
     });
     state.workoutHistory = Array.from(workoutsByKey.values()).sort((a,b) => new Date(b.date) - new Date(a.date));
+    restoreLoggedExercises();
 
     state.weightLog = weightRows.map(r => ({
       date: (r[0]||'').trim(), weight: parseFloat(r[1])||0, unit: r[2]||'kg', notes: r[3]||'',
@@ -960,6 +975,7 @@ async function loadDataFromSheets() {
     ex.sets.push({ id: r[0], weight: parseFloat(r[5])||0, reps: parseInt(r[6])||0, effort: r[7]||'' });
   });
   state.workoutHistory = Object.values(workoutsById).sort((a,b) => new Date(b.date) - new Date(a.date));
+  restoreLoggedExercises();
   state.weightLog = weightRows.map(r => ({
     id: r[0], date: r[1], weight: parseFloat(r[2])||0, unit: r[3]||'kg', notes: r[4]||'',
   })).sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -1155,6 +1171,7 @@ async function init() {
   state.presets = await dbGet('presets') || [...DEFAULT_PRESETS];
   const saved = await dbGet('currentWorkout');
   if (saved) { state.currentWorkout = saved; }
+  restoreLoggedExercises();
   renderGate();
 }
 
