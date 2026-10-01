@@ -107,10 +107,12 @@ test('muscle group chips narrow the list, with your exercises first', () => {
   const names = rowNames(app);
   assert.deepEqual(names.slice(0, 3), ['Barbell Squat', 'Leg Press', 'Lying Leg Curls']);
   // Un-logged exercises are paged so the list stays fast; "Show all" expands it.
-  assert.equal(names.length, 3 + 50);
-  assert.match(app.el('exercise-list').innerHTML, /Show all \d+/);
+  // Counts come from the library so this holds however large exercises.json is.
+  const legsTotal = app.run("getPickerCandidates().filter(e => e.muscleGroup === 'Legs').length");
+  assert.equal(names.length, Math.min(legsTotal, 3 + 50));
+  if (legsTotal > 3 + 50) assert.match(app.el('exercise-list').innerHTML, /Show all \d+/);
   app.run('showAllPickerRows()');
-  assert.ok(rowNames(app).length > 100);
+  assert.equal(rowNames(app).length, legsTotal);
   assert.ok(app.run("picker.rows.every(r => r.muscleGroup === 'Legs')"));
   assert.match(app.el('exercise-list').innerHTML, /Yours · Legs/);
   // Sub-muscle chips appear for the group; the most used muscle leads.
@@ -219,4 +221,14 @@ test('Due suggests your exercises for the muscles you have neglected longest', (
   app.el('exercise-search').value = 'press';
   app.run('setPickerGroup(\'frequent\')');
   assert.doesNotMatch(app.el('exercise-list').innerHTML, /Due ·/);
+});
+
+test('logged exercises outside the picker list keep their muscle from the exercise index', () => {
+  const app = loadApp();
+  // Simulates an exercise that is indexed (e.g. archived) but not offered in the picker's main list.
+  app.run(`state.exercises = state.exercises.filter(e => e.name !== 'Lying Leg Curls');
+    state.workoutHistory = ${JSON.stringify([workout(20, ['Lying Leg Curls']), workout(30, ['Lying Leg Curls'])])};
+    startWorkout(); openExercisePicker();`);
+  assert.equal(app.run("picker.rows[0].name + '|' + picker.rows[0].muscleGroup + '|' + picker.rows[0].muscle"), 'Lying Leg Curls|Legs|hamstrings');
+  assert.match(app.el('exercise-list').innerHTML, /Due · Hamstrings/);
 });

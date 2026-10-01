@@ -1582,10 +1582,14 @@ function getPickerCandidates() {
       equipment: (e.equipment || []).filter(q => q !== 'none' && q !== 'other'), category: e.category || '',
       inPreset: inPresets.has(e.name), usage: usage[e.name] || none };
   });
-  // Exercises logged in history but missing from the database (e.g. custom ones) still belong to the user.
+  // Exercises logged in history but not in the picker's list (custom ones, or ones only in the
+  // full exercise index) still belong to the user; use the index for their muscles when it has them.
   Object.keys(usage).forEach(name => {
     if (known.has(name)) return;
-    list.push({ id: 'ex_name_' + name, name, muscleGroup: 'Other', muscle: null, equipment: [], category: '', usage: usage[name] });
+    const ex = exerciseIndex[name.toLowerCase()];
+    list.push({ id: 'ex_name_' + name, name, muscleGroup: ex ? getExerciseMuscleGroup(ex) : 'Other',
+      muscle: ex ? (ex.primary_muscles || [])[0] || null : null, equipment: ex ? (ex.equipment || []).filter(q => q !== 'none' && q !== 'other') : [],
+      category: ex ? ex.category || '' : '', inPreset: false, usage: usage[name] });
   });
   return list;
 }
