@@ -1,0 +1,95 @@
+{
+  "about": "Curated exercise library. build_exercise_library.py keeps these names (exact names from the source database), plus every built-in preset exercise and every exercise in data/ history, and moves the rest to public/exercises-archive.json. Picks follow StrengthLog's ranking of the most-logged exercises and its exercise directory, so the list covers the staples for each muscle group and the common barbell, dumbbell, cable, machine and bodyweight variants.",
+  "sources": [
+    "https://www.strengthlog.com/most-popular-exercises/",
+    "https://www.strengthlog.com/exercise-directory/",
+    "https://thebarbell.com/most-performed-exercises/"
+  ],
+  "keep": {
+    "Chest": [
+      "Barbell Bench Press", "Barbell Incline Bench Press", "Barbell Decline Bench Press", "Wide-Grip Barbell Bench Press",
+      "Dumbbell Bench Press", "Incline Dumbbell Press", "Dumbbell Decline Bench Press", "Dumbbell Flyes", "Incline Dumbbell Flyes",
+      "Cable Crossover", "Low Cable Crossover", "Incline Cable Flye", "Cable Chest Press", "Machine Chest Fly", "Machine Bench Press",
+      "Leverage Chest Press", "Leverage Incline Chest Press", "Smith Machine Bench Press", "Smith Machine Incline Bench Press",
+      "Pushups", "Push-Ups With Feet Elevated", "Incline Push-Up", "Dips (Chest Focus)", "Straight-Arm Dumbbell Pullover", "Floor Press"
+    ],
+    "Shoulders": [
+      "Standing Military Press", "Seated Barbell Military Press", "Barbell Shoulder Press", "Dumbbell Shoulder Press", "Seated Dumbbell Press",
+      "Standing Dumbbell Press", "Arnold Dumbbell Press", "Machine Shoulder (Military) Press", "Leverage Shoulder Press",
+      "Smith Machine Overhead Shoulder Press", "Push Press", "Landmine Linear Jammer", "Side Lateral Raise", "Seated Side Lateral Raise",
+      "Cable Seated Lateral Raise", "One-Arm Side Laterals", "Front Dumbbell Raise", "Front Cable Raise", "Front Plate Raise",
+      "Reverse Flyes", "Reverse Machine Flyes", "Cable Rear Delt Fly", "Seated Bent-Over Rear Delt Raise", "Face Pull",
+      "Upright Barbell Row", "Upright Cable Row", "Band Pull Apart", "External Rotation with Cable", "External Rotation with Band",
+      "Handstand Push-Ups"
+    ],
+    "Back": [
+      "Pullups", "Chin-Up", "Weighted Pull Ups", "Band Assisted Pull-Up", "Muscle Up", "Scapular Pull-Up",
+      "Wide-Grip Lat Pulldown", "Close-Grip Front Lat Pulldown", "Underhand Cable Pulldowns", "V-Bar Pulldown", "One Arm Lat Pulldown",
+      "Straight-Arm Pulldown", "Rope Straight-Arm Pulldown", "Bent Over Barbell Row", "Reverse Grip Bent-Over Rows",
+      "One-Arm Dumbbell Row", "Bent Over Two-Dumbbell Row", "Dumbbell Incline Row", "Seated Cable Rows", "Seated One-arm Cable Pulley Rows",
+      "T-Bar Row with Handle", "Lying T-Bar Row", "Leverage Iso Row", "Leverage High Row", "Inverted Row", "Alternating Renegade Row",
+      "Barbell Deadlift", "Sumo Deadlift", "Trap Bar Deadlift", "Deficit Deadlift", "Rack Pulls",
+      "Hyperextensions (Back Extensions)", "Good Morning", "Barbell Shrug", "Dumbbell Shrug", "Cable Shrugs"
+    ],
+    "Biceps": [
+      "Barbell Curl", "EZ-Bar Curl", "Dumbbell Bicep Curl", "Dumbbell Alternate Bicep Curl", "Hammer Curl", "Cross Body Hammer Curl",
+      "Incline Dumbbell Curl", "Concentration Curls", "Preacher Curl", "Dumbbell Preacher Curl", "Machine Preacher Curls",
+      "Machine Bicep Curl", "Standing Biceps Cable Curl", "Cable Hammer Curls (Rope Attachment)", "Overhead Cable Curl",
+      "Cable Preacher Curl", "Spider Curl", "Drag Curl", "Reverse Barbell Curl", "Zottman Curl"
+    ],
+    "Triceps": [
+      "Triceps Pushdown", "Triceps Pushdown - Rope Attachment", "Triceps Pushdown - V-Bar Attachment", "Reverse Grip Triceps Pushdown",
+      "Triceps Overhead Extension with Rope", "Cable One Arm Tricep Extension", "EZ-Bar Skullcrusher", "Lying Dumbbell Tricep Extension",
+      "Standing Dumbbell Triceps Extension", "Seated Triceps Press", "Standing Overhead Barbell Triceps Extension", "Tricep Dumbbell Kickback",
+      "Close-Grip Barbell Bench Press", "JM Press", "Dips (Triceps Focus)", "Bench Dips", "Machine Triceps Extension", "Machine Dips",
+      "Push-Ups - Close Triceps Position"
+    ],
+    "Forearms": [
+      "Palms-Up Barbell Wrist Curl Over A Bench", "Palms-Down Wrist Curl Over A Bench", "Seated Dumbbell Palms-Up Wrist Curl",
+      "Wrist Roller", "Farmer's Walk", "Plate Pinch"
+    ],
+    "Quads": [
+      "Barbell Squat", "Front Barbell Squat", "Box Squat", "Goblet Squat", "Dumbbell Squat", "Bodyweight Squat", "Zercher Squats",
+      "Hack Squat", "Leg Press", "Smith Machine Squat", "Split Squat with Dumbbells", "Smith Single-Leg Split Squat",
+      "Dumbbell Lunges", "Barbell Lunge", "Barbell Walking Lunge", "Bodyweight Walking Lunge", "Dumbbell Rear Lunge",
+      "Dumbbell Step Ups", "Barbell Step Ups", "Leg Extensions", "Single-Leg Leg Extension", "Weighted Sissy Squat",
+      "Kettlebell Pistol Squat", "Freehand Jump Squat"
+    ],
+    "Hamstrings and glutes": [
+      "Romanian Deadlift", "Stiff-Legged Barbell Deadlift", "Stiff-Legged Dumbbell Deadlift", "Kettlebell One-Legged Deadlift",
+      "Lying Leg Curls", "Seated Leg Curl", "Standing Leg Curl", "Glute Ham Raise", "Natural Glute Ham Raise", "Ball Leg Curl",
+      "Barbell Hip Thrust", "Barbell Glute Bridge", "Butt Lift (Bridge)", "Single Leg Glute Bridge", "One-Legged Cable Kickback",
+      "Glute Kickback", "Pull Through", "Reverse Hyperextension", "One-Arm Kettlebell Swings",
+      "Thigh Abductor", "Thigh Adductor", "Monster Walk"
+    ],
+    "Calves": [
+      "Standing Machine Calf Raise", "Seated Machine Calf Raise", "Calf Press On The Leg Press Machine", "Barbell Seated Calf Raise",
+      "Smith Machine Calf Raise", "Standing Dumbbell Calf Raise", "Standing Barbell Calf Raise", "Donkey Calf Raises"
+    ],
+    "Core": [
+      "Plank", "Side Bridge", "Crunches", "Sit-Up", "Reverse Crunch", "Cable Crunch", "Machine Crunch", "Decline Crunch",
+      "Hanging Leg Raise", "Knee/Hip Raise On Parallel Bars", "Flat Bench Lying Leg Raise", "Ab Roller", "Barbell Ab Rollout - On Knees",
+      "Russian Twist", "Dead Bug", "Pallof Press", "Standing Cable Wood Chop", "Dumbbell Side Bend", "Mountain Climbers",
+      "Jackknife Sit-Up", "Air Bike"
+    ],
+    "Full body and conditioning": [
+      "Power Clean", "Hang Clean", "Clean and Jerk", "Snatch", "Kettlebell Thruster", "Kettlebell Turkish Get-Up (Squat style)",
+      "Front Box Jump", "Battling Ropes", "Sled Push", "Overhead Slam", "Rope Jumping"
+    ],
+    "Cardio": [
+      "Running, Treadmill", "Walking, Treadmill", "Bicycling, Stationary", "Elliptical Trainer", "Rowing, Stationary", "Stairmaster"
+    ]
+  },
+  "add": [
+    { "name": "Bulgarian Split Squat", "category": "strength", "equipment": ["dumbbell", "bench"], "primary_muscles": ["quads"], "secondary_muscles": ["glutes", "hamstrings"],
+      "instructions": ["Stand a stride in front of a bench and rest the top of your back foot on it.", "Holding dumbbells at your sides, lower until your front thigh is about parallel to the floor.", "Drive through your front heel to stand back up. Finish all reps, then switch legs."] },
+    { "name": "Assisted Pull-Up", "category": "strength", "equipment": ["machine"], "primary_muscles": ["lats"], "secondary_muscles": ["biceps", "middle back"],
+      "instructions": ["Set the counterweight, kneel or stand on the platform and grip the handles overhead.", "Pull until your chin clears the handles, then lower under control."] },
+    { "name": "Hip Thrust Machine", "category": "strength", "equipment": ["machine"], "primary_muscles": ["glutes"], "secondary_muscles": ["hamstrings"],
+      "instructions": ["Sit with your upper back against the pad and the belt or pad across your hips.", "Drive your hips up until they are in line with your knees and shoulders, squeeze, then lower."] },
+    { "name": "Burpees", "category": "cardio", "equipment": ["none"], "primary_muscles": ["quads"], "secondary_muscles": ["chest", "shoulders", "abs"],
+      "instructions": ["From standing, squat and place your hands on the floor.", "Jump your feet back to a push-up position, then jump them back in.", "Jump up with your arms overhead."] },
+    { "name": "Jumping Jacks", "category": "cardio", "equipment": ["none"], "primary_muscles": ["quads"], "secondary_muscles": ["calves", "shoulders"],
+      "instructions": ["Jump your feet out while raising your arms overhead, then jump back to the start."] }
+  ]
+}
