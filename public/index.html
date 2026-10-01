@@ -77,7 +77,7 @@
   .exercise-option { display: flex; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); cursor: pointer; -webkit-tap-highlight-color: transparent; gap: 10px; }
   .exercise-option:active { background: var(--bg-2); }
   .exercise-option .ex-name { flex: 1; font-size: 15px; }
-  .exercise-option .pixel-icon { flex-shrink: 0; }
+  .exercise-option .pixel-icon, .exercise-option .ex-pictogram { flex-shrink: 0; }
 
   /* Exercise picker */
   #exercise-picker .picker-sheet { height: 85vh; height: 85dvh; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
@@ -1624,15 +1624,19 @@ function getPickerCandidates() {
   return list;
 }
 
-// One cached image per muscle group: inline SVGs cost ~40 DOM nodes per row, which makes the
-// full list of ~900 exercises slow to re-render on a phone.
+// One cached image per exercise: inline SVGs cost dozens of DOM nodes per row, which makes
+// long lists slow to re-render on a phone.
 const pickerIconCache = {};
-function pickerIcon(group) {
-  if (!pickerIconCache[group]) {
-    const svg = pixelArtSVG(group, 20).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
-    pickerIconCache[group] = '<img class="pixel-icon" width="20" height="20" alt="" src="data:image/svg+xml,'+encodeURIComponent(svg)+'">';
+function pickerIcon(group, name) {
+  const key = group + '|' + name;
+  if (!pickerIconCache[key]) {
+    const svg = typeof Pictograms === 'undefined'
+      ? pixelArtSVG(group, 20).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')
+      : Pictograms.render(exerciseIndex[String(name).toLowerCase()] || { name, muscleGroup: group }, { size: 32, color: GROUP_COLORS[group] || '#e8e4df' });
+    const cls = typeof Pictograms === 'undefined' ? 'pixel-icon' : 'ex-pictogram';
+    pickerIconCache[key] = '<img class="'+cls+'" width="32" height="32" alt="" src="data:image/svg+xml,'+encodeURIComponent(svg)+'">';
   }
-  return pickerIconCache[group];
+  return pickerIconCache[key];
 }
 
 function formatAgo(ts) {
@@ -1752,7 +1756,7 @@ function renderExercisePicker() {
     if (e.equipment.length) meta.push(e.equipment[0]);
     const usedHtml = e.usage.count ? ' · <span class="used">'+e.usage.count+'× · '+formatAgo(e.usage.last)+'</span>' : '';
     const cls = 'exercise-option' + (added ? ' added' : selected.has(e.name) ? ' selected' : '');
-    return '<div class="'+cls+'" id="pick-row-'+i+'" onclick="pickExercise('+i+')">'+pickerIcon(e.muscleGroup)+
+    return '<div class="'+cls+'" id="pick-row-'+i+'" onclick="pickExercise('+i+')">'+pickerIcon(e.muscleGroup, e.name)+
       '<div class="ex-main"><span class="ex-name">'+escapeHtml(e.name)+'</span><span class="ex-meta">'+escapeHtml(meta.join(' · '))+usedHtml+'</span></div>'+
       '<span class="ex-check">✓</span></div>';
   };
