@@ -21,7 +21,7 @@ function corsHeaders(origin) {
 export default {
   async fetch(request) {
     const origin = request.headers.get('Origin') || '';
-    const allowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+    const allowed = ALLOWED_ORIGINS.includes(origin);
     const headers = corsHeaders(allowed ? origin : ALLOWED_ORIGINS[0]);
 
     if (request.method === 'OPTIONS') {

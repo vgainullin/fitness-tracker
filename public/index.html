@@ -304,6 +304,8 @@
   #sign-in-gate .signin-btn:active { opacity: 0.8; }
   #sign-in-gate .setup-hint { color: var(--text-faint); font-size: 12px; max-width: 300px; line-height: 1.5; }
   #sign-in-gate .setup-input { margin-top: 8px; }
+  #sign-in-gate .gate-link { color: var(--text-dim); }
+  #gate-content { display: flex; flex-direction: column; align-items: center; gap: 24px; }
   .loading-spinner { color: var(--text-dim); font-size: 14px; padding: 40px; text-align: center; }
 
   /* Muscle progress */
@@ -357,6 +359,7 @@
   <div id="gate-content">
     <p class="loading-spinner">Loading...</p>
   </div>
+  <p class="setup-hint">Your workouts stay in your own Google Drive. <a href="privacy.html" class="gate-link">Privacy</a></p>
 </div>
 
 <div id="app" style="display:none;">
@@ -439,9 +442,7 @@
     <h1 class="mb-20">Settings</h1>
     <div class="settings-section">
       <h3>Account</h3>
-      <p class="small dim mb-12">Signed in. Data saved to Google Sheets.</p>
-      <button class="btn btn-secondary btn-sm btn-full mb-8" onclick="enableCliAccess()">Enable CLI Access</button>
-      <div id="cli-status"></div>
+      <p class="small dim mb-12"><span id="account-email">Signed in.</span> Workouts are saved to the Iron Log Data sheet in your Google Drive.</p>
       <button class="btn btn-secondary btn-sm btn-full" onclick="googleSignOut()">Sign out</button>
     </div>
     <div class="settings-section">
@@ -463,7 +464,7 @@
       <h3>Data</h3>
       <button class="btn btn-secondary btn-sm btn-full mb-8" onclick="backupSpreadsheet()">Back up Spreadsheet (Drive copy)</button>
       <div id="backup-status" class="small mb-8"></div>
-      <button class="btn btn-secondary btn-sm btn-full mb-8" onclick="exportData()">Export Data (JSON)</button>
+      <button class="btn btn-secondary btn-sm btn-full mb-8" onclick="exportData()">Download my data (JSON)</button>
       <p class="small dim mb-8">One-time migration to a flat, manual-entry friendly schema (single Sets tab; no synthetic ids). Back up first.</p>
       <button class="btn btn-secondary btn-sm btn-full" onclick="migrateToV2()">Migrate to v2 schema</button>
       <div id="migrate-status" class="small mt-8"></div>
@@ -769,23 +770,46 @@ function youtubeLink(exerciseName, cls) {
 // INDEXEDDB SETTINGS STORE
 // ============================================
 
-const DB_NAME = 'ironlog_settings';
+// Everything kept on the device lives in one database per Google account
+// (ironlog_acct_<id>), opened after sign-in, so one person's key, workouts
+// or settings never reach another account on a shared browser.
+// ironlog_settings is the old device-wide store; see migrateLegacyStore.
+const LEGACY_DB_NAME = 'ironlog_settings';
 const DB_VERSION = 1;
 let settingsDb = null;
 
-function openSettingsDb() {
+function openKvDb(name) {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    const req = indexedDB.open(name, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
     };
-    req.onsuccess = () => { settingsDb = req.result; resolve(settingsDb); };
+    req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
 
+function kvGetAll(db) {
+  return new Promise((resolve, reject) => {
+    const out = {};
+    const req = db.transaction('kv', 'readonly').objectStore('kv').openCursor();
+    req.onsuccess = () => {
+      const c = req.result;
+      if (!c) { resolve(out); return; }
+      out[c.key] = c.value;
+      c.continue();
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function openAccountDb(accountId) {
+  settingsDb = await openKvDb('ironlog_acct_' + accountId);
+}
+
 function dbGet(key) {
+  if (!settingsDb) return Promise.resolve(undefined);
   return new Promise((resolve, reject) => {
     const tx = settingsDb.transaction('kv', 'readonly');
     const req = tx.objectStore('kv').get(key);
@@ -795,6 +819,7 @@ function dbGet(key) {
 }
 
 function dbSet(key, val) {
+  if (!settingsDb) return Promise.resolve();
   return new Promise((resolve, reject) => {
     const tx = settingsDb.transaction('kv', 'readwrite');
     tx.objectStore('kv').put(val, key);
@@ -810,7 +835,6 @@ let settings = { anthropicKey: '', anthropicModel: 'claude-haiku-4-5-20251001', 
 const GOOGLE_CLIENT_ID = '470062200190-mfb1vdi9g9946lh5l73qtrn6fbv68n15.apps.googleusercontent.com';
 
 async function loadSettings() {
-  await openSettingsDb();
   for (const k of Object.keys(settings)) {
     const v = await dbGet(k);
     if (v !== undefined) settings[k] = v;
@@ -826,14 +850,23 @@ async function saveSetting(key, val) {
 // GOOGLE IDENTITY SERVICES + SHEETS API
 // ============================================
 
-const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+// drive.file only reaches files this app created or the user opened with it.
+// It is a non-sensitive scope, so Google needs no security review or test-user
+// list. openid + email identify the account for on-device storage.
+const DRIVE_FILE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const GOOGLE_SCOPES = 'openid email ' + DRIVE_FILE_SCOPE;
 const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
+const DRIVE_BASE = 'https://www.googleapis.com/drive/v3';
 const SPREADSHEET_TITLE = 'Iron Log Data';
+const SPREADSHEET_MIME = 'application/vnd.google-apps.spreadsheet';
 
 let gtoken = null;
 let tokenClient = null;
+let account = null; // { id, email } of the signed-in Google account
 
-function renderGate() {
+const GOOGLE_G_SVG = '<svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.01 24.01 0 0 0 0 21.56l7.98-6.19z"/><path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+
+function renderGate(reason) {
   const gc = document.getElementById('gate-content');
   if (!GOOGLE_CLIENT_ID) {
     gc.innerHTML = '<p class="subtitle" style="color:var(--red);">App not configured. Developer needs to set GOOGLE_CLIENT_ID in index.html.</p>';
@@ -847,16 +880,21 @@ function renderGate() {
   if (!tokenClient) {
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      scope: SHEETS_SCOPE,
+      scope: GOOGLE_SCOPES,
       callback: onGoogleToken,
     });
   }
-  gc.innerHTML = '<button class="signin-btn" onclick="googleSignIn()"><svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.01 24.01 0 0 0 0 21.56l7.98-6.19z"/><path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Sign in with Google</button>';
+  if (reason === 'needs-drive') {
+    gc.innerHTML = '<p class="subtitle">Iron Log needs Drive access to save your workouts. It can only see the files it creates.</p>' +
+      '<button class="signin-btn" onclick="googleSignIn(\'consent\')">' + GOOGLE_G_SVG + 'Allow Drive access</button>';
+    return;
+  }
+  gc.innerHTML = '<button class="signin-btn" onclick="googleSignIn()">' + GOOGLE_G_SVG + 'Sign in with Google</button>';
 }
 
-function googleSignIn() {
+function googleSignIn(prompt) {
   if (!tokenClient) return;
-  tokenClient.requestAccessToken({ prompt: '' });
+  tokenClient.requestAccessToken({ prompt: prompt || '' });
 }
 
 async function onGoogleToken(resp) {
@@ -864,9 +902,30 @@ async function onGoogleToken(resp) {
     toast('Google auth failed: ' + resp.error, true);
     return;
   }
+  // Google may show Drive access as a checkbox; without it the app can't save anything.
+  if (!google.accounts.oauth2.hasGrantedAllScopes(resp, DRIVE_FILE_SCOPE)) {
+    renderGate('needs-drive');
+    return;
+  }
   gtoken = resp.access_token;
-  await ensureSpreadsheet();
-  await loadDataFromSheets();
+  try {
+    const me = await googleApi('https://www.googleapis.com/oauth2/v3/userinfo');
+    if (!me.sub) throw new Error('Could not read your Google account');
+    account = { id: me.sub, email: me.email || '' };
+    await openAccountDb(account.id);
+    await migrateLegacyStore();
+    await loadSettings();
+    state.presets = await dbGet('presets') || [...DEFAULT_PRESETS];
+    state.currentWorkout = await dbGet('currentWorkout') || null;
+    restoreLoggedExercises();
+    await ensureSpreadsheet();
+    await loadDataFromSheets();
+  } catch(e) {
+    toast('Sign-in failed: ' + e.message, true);
+    renderGate();
+    return;
+  }
+  document.getElementById('account-email').textContent = account.email ? 'Signed in as ' + account.email + '.' : 'Signed in.';
   document.getElementById('sign-in-gate').style.display = 'none';
   document.getElementById('app').style.display = '';
   if (settings.anthropicKey) {
@@ -885,12 +944,36 @@ async function onGoogleToken(resp) {
   flushPendingWorkouts();
 }
 
-function googleSignOut() {
+async function googleSignOut() {
+  const pending = await dbGet('pendingWorkouts') || [];
+  if (pending.length && !confirm(pending.length + ' workout(s) are not saved to your sheet yet. They stay on this device and sync the next time you sign in. Sign out?')) return;
   if (gtoken) google.accounts.oauth2.revoke(gtoken);
   gtoken = null;
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('sign-in-gate').style.display = '';
-  renderGate();
+  // Reloading drops everything held in memory; on-device data stays walled off
+  // in this account's own database until the same account signs in again.
+  location.reload();
+}
+
+// Before per-account storage, everything lived in one device-wide database.
+// It moves into the first account that can open the spreadsheet it points at
+// (drive.file means only the account that created it can), then is deleted.
+async function migrateLegacyStore() {
+  if (await dbGet('spreadsheetId')) return;
+  let legacy;
+  try { legacy = await openKvDb(LEGACY_DB_NAME); } catch(e) { return; }
+  let done = false;
+  try {
+    const data = await kvGetAll(legacy);
+    if (data.spreadsheetId) {
+      try { await sheetsApi('/' + data.spreadsheetId + '?fields=spreadsheetId'); }
+      catch(e) { return; } // another account's sheet: leave it for them
+      for (const [k, v] of Object.entries(data)) await dbSet(k, v);
+    }
+    done = true;
+  } finally {
+    legacy.close();
+    if (done) indexedDB.deleteDatabase(LEGACY_DB_NAME);
+  }
 }
 
 function refreshToken() {
@@ -903,20 +986,24 @@ function refreshToken() {
       gtoken = resp.access_token;
       resolve();
     };
-    tokenClient.requestAccessToken({ prompt: '' });
+    tokenClient.requestAccessToken({ prompt: '', login_hint: account ? account.email : undefined });
   });
 }
 
-async function sheetsApi(path, method, body, _retried) {
+function sheetsApi(path, method, body) {
+  return googleApi(SHEETS_BASE + path, method, body);
+}
+
+async function googleApi(url, method, body, _retried) {
   if (!gtoken) throw new Error('Not signed in');
   const opts = { method: method || 'GET', headers: { 'Authorization': 'Bearer ' + gtoken } };
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
-  const resp = await fetch(SHEETS_BASE + path, opts);
+  const resp = await fetch(url, opts);
   if (resp.status === 401) {
     if (!_retried) {
       try {
         await refreshToken();
-        return sheetsApi(path, method, body, true);
+        return googleApi(url, method, body, true);
       } catch(e) { /* refresh failed, fall through */ }
     }
     gtoken = null;
@@ -935,7 +1022,15 @@ async function ensureSpreadsheet() {
     try {
       const check = await sheetsApi('/' + settings.spreadsheetId + '?fields=spreadsheetId');
       if (check && check.spreadsheetId) return;
-    } catch(e) { /* spreadsheet gone, create new */ }
+    } catch(e) { /* spreadsheet gone, look for another */ }
+  }
+  // On a new device, reuse the sheet the app already made in this Drive
+  // (backups have a different name, so they never match).
+  const q = "name = '" + SPREADSHEET_TITLE + "' and mimeType = '" + SPREADSHEET_MIME + "' and trashed = false";
+  const found = await googleApi(DRIVE_BASE + '/files?q=' + encodeURIComponent(q) + '&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id)');
+  if (found.files && found.files.length) {
+    await saveSetting('spreadsheetId', found.files[0].id);
+    return;
   }
   const resp = await sheetsApi('', 'POST', {
     properties: { title: SPREADSHEET_TITLE },
@@ -1154,28 +1249,6 @@ async function syncWeightToSheets(entry) {
     { values: [[entry.id, entry.date, entry.weight, entry.unit, '', new Date().toISOString()]] });
 }
 
-// ---- CLI / Service Account Access ----
-const SERVICE_ACCOUNT_EMAIL = 'fitness-service@fitness-tracker-490214.iam.gserviceaccount.com';
-
-async function enableCliAccess() {
-  if (!gtoken || !settings.spreadsheetId) { toast('Not signed in', true); return; }
-  const el = document.getElementById('cli-status');
-  el.innerHTML = '<p class="small dim">Sharing spreadsheet with service account...</p>';
-  try {
-    const resp = await fetch(
-      'https://www.googleapis.com/drive/v3/files/' + settings.spreadsheetId + '/permissions',
-      { method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + gtoken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: 'writer', type: 'user', emailAddress: SERVICE_ACCOUNT_EMAIL })
-      });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
-    el.innerHTML = '<p class="small" style="color:var(--green)">CLI access enabled. Run scripts/pull.py to fetch data.</p>';
-  } catch(e) {
-    el.innerHTML = '<p class="small" style="color:var(--red)">Failed: ' + e.message + '</p>';
-  }
-}
-
 // ============================================
 // APP STATE (in-memory, loaded from Sheets)
 // ============================================
@@ -1221,12 +1294,7 @@ function saveCurrentWorkout() {
 }
 
 async function init() {
-  await loadSettings();
   await loadExerciseDb();
-  state.presets = await dbGet('presets') || [...DEFAULT_PRESETS];
-  const saved = await dbGet('currentWorkout');
-  if (saved) { state.currentWorkout = saved; }
-  restoreLoggedExercises();
   renderGate();
 }
 
@@ -2976,7 +3044,7 @@ async function saveAnthropicKey() {
 }
 
 function exportData() {
-  const b = new Blob([JSON.stringify({workoutHistory:state.workoutHistory,weightLog:state.weightLog},null,2)],{type:'application/json'});
+  const b = new Blob([JSON.stringify({workoutHistory:state.workoutHistory,weightLog:state.weightLog,presets:state.presets,weekPlan:state.weekPlan},null,2)],{type:'application/json'});
   const a = document.createElement('a'); a.href=URL.createObjectURL(b); a.download='ironlog-'+new Date().toISOString().slice(0,10)+'.json'; a.click(); toast('Exported');
 }
 
