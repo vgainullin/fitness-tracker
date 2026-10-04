@@ -35,6 +35,7 @@
   nav .nav-inner { display: flex; max-width: 500px; width: 100%; }
   nav button { flex: 1; background: none; border: none; color: var(--text-faint); font-family: var(--font); font-size: 10px; font-weight: 500; padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; transition: color 0.15s; }
   nav button.active { color: var(--accent); }
+  nav button[hidden] { display: none; }
   nav button svg { width: 20px; height: 20px; }
 
   h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
@@ -474,7 +475,7 @@
     <button onclick="switchTab('workout', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="4" height="10" rx="1"/><rect x="18" y="7" width="4" height="10" rx="1"/><line x1="6" y1="12" x2="18" y2="12"/><rect x="8" y="9" width="3" height="6" rx="0.5"/><rect x="13" y="9" width="3" height="6" rx="0.5"/></svg>Workout</button>
     <button onclick="switchTab('weight', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v18M3 12h18M7.5 7.5l9 9M16.5 7.5l-9 9"/><circle cx="12" cy="12" r="3"/></svg>Weight</button>
     <button onclick="switchTab('progress', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg>Progress</button>
-    <button onclick="switchTab('chat', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Coach</button>
+    <button id="nav-coach" onclick="switchTab('chat', this)" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Coach</button>
     <button onclick="switchTab('settings', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</button>
   </div></nav>
 </div>
@@ -874,6 +875,7 @@ async function onGoogleToken(resp) {
   }
   document.getElementById('anthropic-model').value = settings.anthropicModel;
   document.getElementById('weight-unit-btn').textContent = settings.weightUnit;
+  updateCoachNav();
   renderAll();
   if (state.currentWorkout) {
     startTimer();
@@ -2942,11 +2944,17 @@ async function coachLoop(btn) {
 // SETTINGS
 // ============================================
 
+// The Coach tab only shows once an Anthropic key is saved.
+function updateCoachNav() {
+  document.getElementById('nav-coach').hidden = !settings.anthropicKey;
+}
+
 async function saveAnthropicKey() {
   const key = document.getElementById('anthropic-key').value.trim();
   const status = document.getElementById('anthropic-key-status');
   if (!key) {
     await saveSetting('anthropicKey', '');
+    updateCoachNav();
     status.innerHTML = '<p class="small dim">Key removed</p>';
     return;
   }
@@ -2960,6 +2968,7 @@ async function saveAnthropicKey() {
     const r = await resp.json();
     if (r.error) throw new Error(r.error.message || String(r.error));
     await saveSetting('anthropicKey', key);
+    updateCoachNav();
     status.innerHTML = '<p class="small" style="color:var(--green)">Key verified and saved</p>';
   } catch(e) {
     status.innerHTML = '<p class="small" style="color:var(--red)">Failed: ' + escapeHtml(e.message) + '</p>';
