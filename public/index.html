@@ -908,6 +908,7 @@ async function onGoogleToken(resp) {
     return;
   }
   gtoken = resp.access_token;
+  const previousAccountId = account ? account.id : null;
   try {
     const me = await googleApi('https://www.googleapis.com/oauth2/v3/userinfo');
     if (!me.sub) throw new Error('Could not read your Google account');
@@ -916,7 +917,11 @@ async function onGoogleToken(resp) {
     await migrateLegacyStore();
     await loadSettings();
     state.presets = await dbGet('presets') || [...DEFAULT_PRESETS];
-    state.currentWorkout = await dbGet('currentWorkout') || null;
+    // After a session-expired re-sign-in to the same account, the workout in
+    // memory is the newest copy, so keep it and write it back. Otherwise (a
+    // page refresh, or another account) load the one saved on this device.
+    if (state.currentWorkout && previousAccountId === account.id) await dbSet('currentWorkout', state.currentWorkout);
+    else state.currentWorkout = await dbGet('currentWorkout') || null;
     restoreLoggedExercises();
     await ensureSpreadsheet();
     await loadDataFromSheets();
@@ -936,11 +941,7 @@ async function onGoogleToken(resp) {
   document.getElementById('weight-unit-btn').textContent = settings.weightUnit;
   updateCoachNav();
   renderAll();
-  if (state.currentWorkout) {
-    startTimer();
-    switchTab('workout', document.querySelectorAll('nav button')[1]);
-    toast('Workout restored');
-  }
+  restoreActiveWorkout();
   flushPendingWorkouts();
 }
 
@@ -1007,6 +1008,8 @@ async function googleApi(url, method, body, _retried) {
       } catch(e) { /* refresh failed, fall through */ }
     }
     gtoken = null;
+    // The in-progress workout stays on this device; signing back in brings it back.
+    saveCurrentWorkout();
     document.getElementById('app').style.display = 'none';
     document.getElementById('sign-in-gate').style.display = '';
     renderGate();
@@ -1290,7 +1293,25 @@ async function savePresets() {
 }
 
 function saveCurrentWorkout() {
-  dbSet('currentWorkout', state.currentWorkout);
+  return dbSet('currentWorkout', state.currentWorkout).catch(e => console.warn('Could not save workout on device', e));
+}
+
+// Show the in-progress workout again after a refresh or a new sign-in.
+function restoreActiveWorkout() {
+  if (!state.currentWorkout) { renderWorkout(); return false; }
+  startTimer();
+  switchTab('workout', document.querySelectorAll('nav button')[1]);
+  toast('Workout restored');
+  return true;
+}
+
+// A refresh, a closed tab or a phone locking mid-set must not lose what was typed.
+if (typeof window !== 'undefined' && window.addEventListener) {
+  const flushWorkout = () => { if (state.currentWorkout) saveCurrentWorkout(); };
+  window.addEventListener('pagehide', flushWorkout);
+  if (typeof document.addEventListener === 'function') {
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushWorkout(); });
+  }
 }
 
 async function init() {
@@ -1312,6 +1333,7 @@ function switchTab(name, btn) {
   if (name==='weight') renderWeight();
   if (name==='chat') renderChat();
   if (name==='settings') renderPendingWorkouts();
+  if (name==='workout') renderWorkout();
 }
 
 // ============================================
@@ -2297,8 +2319,8 @@ function renderWorkout() {
     ex.sets.forEach((s,si)=>{
       const ps = prevSets && prevSets[si];
       h+='<div class="set-row'+(ps && (ps.weight || ps.reps) ? ' has-prev' : '')+'"><span class="set-num">'+(si+1)+'</span>';
-      h+='<div class="set-input-cell"><input type="number" value="'+(s.weight||'')+'" placeholder="'+(bw ? 'BW' : '0')+'" onchange="updateSet('+xi+','+si+',\'weight\',this.value)">'+(ps && ps.weight ? '<span class="prev-val">'+ps.weight+'</span>' : '')+'</div>';
-      h+='<div class="set-input-cell"><input type="number" inputmode="numeric" value="'+(s.reps||'')+'" placeholder="0" onchange="updateSet('+xi+','+si+',\'reps\',this.value)">'+(ps && ps.reps ? '<span class="prev-val">'+ps.reps+'</span>' : '')+'</div>';
+      h+='<div class="set-input-cell"><input type="number" value="'+(s.weight||'')+'" placeholder="'+(bw ? 'BW' : '0')+'" oninput="updateSet('+xi+','+si+',\'weight\',this.value)">'+(ps && ps.weight ? '<span class="prev-val">'+ps.weight+'</span>' : '')+'</div>';
+      h+='<div class="set-input-cell"><input type="number" inputmode="numeric" value="'+(s.reps||'')+'" placeholder="0" oninput="updateSet('+xi+','+si+',\'reps\',this.value)">'+(ps && ps.reps ? '<span class="prev-val">'+ps.reps+'</span>' : '')+'</div>';
       h+='<div class="effort-toggle">';
       h+='<button class="effort-btn '+(s.effort==='light'?'active light':'')+'" onclick="updateSet('+xi+','+si+',\'effort\',\'light\');renderWorkout()">L</button>';
       h+='<button class="effort-btn '+(s.effort==='good'?'active good':'')+'" onclick="updateSet('+xi+','+si+',\'effort\',\'good\');renderWorkout()">G</button>';
@@ -2307,7 +2329,7 @@ function renderWorkout() {
     });
     const ls=ex.sets.length>0?ex.sets[ex.sets.length-1]:null;
     const pw=ls?ls.weight:0, pr=ls?ls.reps:0;
-    h+='<textarea class="exercise-comment" rows="1" placeholder="Notes..." onchange="updateExerciseComment('+xi+',this.value)">'+(ex.comment||'').replace(/</g,'&lt;')+'</textarea>';
+    h+='<textarea class="exercise-comment" rows="1" placeholder="Notes..." oninput="updateExerciseComment('+xi+',this.value)">'+(ex.comment||'').replace(/</g,'&lt;')+'</textarea>';
     h+='<button class="add-set-btn" onclick="addSet('+xi+','+pw+','+pr+')">+ Add Set</button></div>';
   });
   if(!state.currentWorkout.exercises.length) h='<div class="empty-state mt-20"><p class="dim">No exercises yet. Add one below.</p></div>';
